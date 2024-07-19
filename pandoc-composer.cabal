@@ -1,0 +1,35 @@
+cabal-version:      3.4
+name:               PandocComposer
+version:            1.0.0
+license:            GPL-3.0-or-later
+license-file:       LICENSE
+author:             Emily Bourke
+maintainer:         emily@emdash.ie
+category:           Application
+build-type:         Simple
+
+common warnings
+    ghc-options: -Wall
+
+executable PandocComposer
+    import:           warnings
+    main-is:          Main.hs
+    -- other-modules:
+    -- other-extensions:
+    build-depends:
+        base,
+        -- cmdargs,
+        containers,
+        generic-lens,
+        lens,
+        megaparsec,
+        pandoc,
+        text,
+        transformers,
+
+    hs-source-dirs:   src
+    default-language: GHC2021
+
+-- Local Variables:
+-- compile-command: "cabal2nix . > pandoc-composer.nix"
+-- End:

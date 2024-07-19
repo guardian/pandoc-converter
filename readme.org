@@ -1,0 +1,3 @@
+#+title: A Pandoc Writer for Composer
+
+This is a 10% project: what if I can write a [[https://pandoc.org/MANUAL.html][pandoc]] writer for composer? We could then plausibly import other document types into composer, e.g. word documents, markdown files, or org-mode files.
