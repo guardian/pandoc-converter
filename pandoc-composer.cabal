@@ -1,8 +1,6 @@
 cabal-version:      3.4
 name:               PandocComposer
 version:            1.0.0
-license:            GPL-3.0-or-later
-license-file:       LICENSE
 author:             Emily Bourke
 maintainer:         emily@emdash.ie
 category:           Application
@@ -14,10 +12,13 @@ common warnings
 executable PandocComposer
     import:           warnings
     main-is:          Main.hs
-    -- other-modules:
+    other-modules:
+      Composer
     -- other-extensions:
     build-depends:
+        aeson,
         base,
+        bytestring,
         -- cmdargs,
         containers,
         generic-lens,
