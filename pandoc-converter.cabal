@@ -25,9 +25,12 @@ executable PandocConverter
         lens,
         megaparsec,
         pandoc,
+        servant-server,
         text,
         time,
         transformers,
+        wai,
+        warp,
 
     hs-source-dirs:   src
     default-language: GHC2021
