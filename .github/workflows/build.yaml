@@ -23,11 +23,11 @@ jobs:
         with:
           nix_path: nixpkgs=channel:nixos-unstable
 
-      - run: nix-shell -p cabal2nix --run "cabal2nix . > pandoc-composer.nix"
+      - run: nix-shell -p cabal2nix --run "cabal2nix . > pandoc-converter.nix"
 
       - run: nix-build release.nix
 
-      - run: ./result/bin/PandocComposer < test.md
+      - run: ./result/bin/PandocConverter < test.md
 
       - run: nix-store --export $(nix-store -qR ./result) > pandoc-converter.closure
 
