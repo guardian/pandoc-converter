@@ -19,8 +19,14 @@ main :: IO ()
 main =
   T.getContents
     >>= mdToComposer
-    <&> (encode >>> toStrict >>> decodeUtf8)
-    >>= T.putStrLn
+    >>= (id
+      >>> encode
+      >>> toStrict
+      >>> decodeUtf8
+      >>> T.putStrLn)
+  where
+    -- toContentEntityRaw :: Composer.Block -> ContentEntityRaw
+    -- toContentEntityRaw =
 
 mdToComposer :: Text -> IO Composer.Block
 mdToComposer txt = runIOorExplode $

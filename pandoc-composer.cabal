@@ -26,6 +26,7 @@ executable PandocComposer
         megaparsec,
         pandoc,
         text,
+        time,
         transformers,
 
     hs-source-dirs:   src
