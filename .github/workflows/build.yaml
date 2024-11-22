@@ -54,7 +54,6 @@ jobs:
           app: pandoc-converter
           projectName: Content Platforms::pandoc-converter
           roleArn: ${{ secrets.GU_RIFF_RAFF_ROLE_ARN }}
-          buildNumber: ${{ env.BUILD_NUMBER }}
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           configPath: cdk/cdk.out/riff-raff.yaml
           contentDirectories: |
