@@ -13,12 +13,16 @@ import Debug.Trace (trace)
 import Text.Pandoc hiding (trace)
 
 import Composer qualified
+import Data.Functor ((<&>))
 
 main :: IO ()
-main = do
-  T.getContents >>= mdToComposer >>= T.putStrLn
+main =
+  T.getContents
+    >>= mdToComposer
+    <&> (encode >>> toStrict >>> decodeUtf8)
+    >>= T.putStrLn
 
-mdToComposer :: Text -> IO Text
+mdToComposer :: Text -> IO Composer.Block
 mdToComposer txt = runIOorExplode $
   trace ("Reader options are: " <> show readerOptions <> "\n") $
     readMarkdown readerOptions txt
@@ -27,7 +31,7 @@ mdToComposer txt = runIOorExplode $
     readerOptions :: ReaderOptions
     readerOptions = def {readerExtensions = pandocExtensions}
 
-writeComposer :: PandocMonad m => WriterOptions -> Pandoc -> m Text
+writeComposer :: PandocMonad m => WriterOptions -> Pandoc -> m Composer.Block
 writeComposer writerOptions document =
   trace ("Input document is: " <> show document <> "\n") $
   evalStateT (pandocToComposer document) (WriterState writerOptions)
@@ -35,8 +39,8 @@ writeComposer writerOptions document =
 newtype WriterState = WriterState
   { options :: WriterOptions }
 
-pandocToComposer :: PandocMonad m => Pandoc -> StateT WriterState m Text
-pandocToComposer (Pandoc _meta blocks) = fmap (encode >>> toStrict >>> decodeUtf8) (blocksToComposer blocks)
+pandocToComposer :: PandocMonad m => Pandoc -> StateT WriterState m Composer.Block
+pandocToComposer (Pandoc _meta blocks) = blocksToComposer blocks
 
 blocksToComposer :: PandocMonad m => [Block] -> StateT WriterState m Composer.Block
 blocksToComposer = traverse blockToComposer >>> fmap (mconcat >>> Composer.Block)

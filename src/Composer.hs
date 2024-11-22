@@ -1,10 +1,58 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 module Composer where
 
 import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Data.Aeson
+import Data.Map.Strict (Map)
+
+data ContentEntityRaw = ContentEntityRaw
+  { id :: String,
+    contentType :: String,
+    originatingSystem :: Maybe String,
+    published :: Bool,
+    isGone :: Maybe Bool,
+    isHosted :: Maybe Bool,
+    scheduledLaunchDate :: Maybe (), -- DateTime,
+    requestedScheduledLaunch :: Maybe (), -- DateTime,
+    expiry :: Maybe (), -- ExpiryEntityRaw,
+    rights :: Maybe (), -- RightsEntity,
+    contentChangeDetails :: (), -- ChangeDetailsEntityRaw,
+    identifiers :: Map String String,
+    collaborators :: [()], -- [UserEntity],
+    toolSettings :: Map String String,
+    aliasPaths :: [()], -- [AliasPath],
+    preview :: Maybe (), -- ContentFacetEntityRaw,
+    live :: Maybe (), -- ContentFacetEntityRaw,
+    auxiliaryAtoms :: [()], -- [AuxiliaryAtomEntity],
+    channels :: Maybe () -- ChannelsEntity.ChannelsData
+  }
+
+instance ToJSON ContentEntityRaw where
+  toJSON (ContentEntityRaw {..}) = object
+    [ "id" .= id
+    , "type" .= contentType
+    , "originatingSystem" .= originatingSystem
+    , "published" .= published
+    , "isGone" .= isGone
+    , "isHosted" .= isHosted
+    , "scheduledLaunchDate" .= scheduledLaunchDate
+    , "requestedScheduledLaunch" .= requestedScheduledLaunch
+    , "expiry" .= expiry
+    , "rights" .= rights
+    , "contentChangeDetails" .= contentChangeDetails
+    , "identifiers" .= identifiers
+    , "collaborators" .= collaborators
+    , "toolSettings" .= toolSettings
+    , "aliasPaths" .= aliasPaths
+    , "preview" .= preview
+    , "live" .= live
+    , "auxiliaryAtoms" .= auxiliaryAtoms
+    , "channels" .= channels
+    ]
+
 
 data Block = Block
   { elements :: Elements
