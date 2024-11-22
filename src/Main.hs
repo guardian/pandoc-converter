@@ -1,22 +1,40 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DataKinds #-}
 module Main where
 
 import Control.Category ((>>>))
 import Control.Monad.Trans.State.Strict
 import Data.Aeson
 import Data.ByteString.Lazy (toStrict)
+import Data.Functor ((<&>))
 import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8)
 import Data.Text.IO qualified as T
 import Debug.Trace (trace)
+import Network.Wai
+import Network.Wai.Handler.Warp
+import Servant hiding (Header)
 import Text.Pandoc hiding (trace)
 
 import Composer qualified
-import Data.Functor ((<&>))
 
 main :: IO ()
-main =
+main = run 9123 app
+
+app :: Application
+app = serve converterAPI server
+
+converterAPI :: Proxy ConverterAPI
+converterAPI = Proxy
+
+server :: Server ConverterAPI
+server = return "working, hopefully 🤞"
+
+type ConverterAPI = "healthcheck" :> Get '[PlainText] Text
+
+exampleConversion :: IO ()
+exampleConversion =
   T.getContents
     >>= mdToComposer
     >>= (id
