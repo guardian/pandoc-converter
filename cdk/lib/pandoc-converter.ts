@@ -25,7 +25,8 @@ export class PandocConverter extends GuStack {
 			},
 			userData: {
 				distributable: {
-					executionStatement: 'ls pandoc-converter.closure', // no nix yet, can't install or run here
+					executionStatement:
+						'converterPath=$(sudo nix-store --import < /pandoc-converter/pandoc-converter.closure | grep PandocConverter); echo "- hello" | $converterPath/bin/PandocConverter > /pandoc-converter/test-output.json',
 					fileName: 'pandoc-converter.closure',
 				},
 			},

@@ -798,7 +798,7 @@ aws s3 cp 's3://",
                     "Ref": "DistributionBucketName",
                   },
                   "/content-api/TEST/pandoc-converter/pandoc-converter.closure' '/pandoc-converter/pandoc-converter.closure'
-ls pandoc-converter.closure",
+converterPath=$(sudo nix-store --import < /pandoc-converter/pandoc-converter.closure | grep PandocConverter); echo "- hello" | $converterPath/bin/PandocConverter > /pandoc-converter/test-output.json",
                 ],
               ],
             },
