@@ -16,7 +16,7 @@ export class PandocConverter extends GuStack {
 				scope: AccessScope.PUBLIC,
 			},
 			app: 'pandoc-converter',
-			applicationPort: 9000,
+			applicationPort: 9482,
 			imageRecipe: 'pandoc-converter-ubuntu-jammy-x86',
 			instanceType: InstanceType.of(InstanceClass.T3, InstanceSize.NANO),
 			monitoringConfiguration: { noMonitoring: true },

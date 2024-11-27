@@ -20,7 +20,7 @@ import Text.Pandoc hiding (trace)
 import Composer qualified
 
 main :: IO ()
-main = run 9123 app
+main = run 9482 app
 
 app :: Application
 app = serve converterAPI server
