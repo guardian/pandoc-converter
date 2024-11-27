@@ -24,6 +24,7 @@ exports[`The PandocConverter stack matches the snapshot 1`] = `
       "GuApplicationLoadBalancer",
       "GuApplicationTargetGroup",
       "GuHttpsApplicationListener",
+      "GuCname",
     ],
     "gu:cdk:version": "TEST",
   },
@@ -534,6 +535,23 @@ exports[`The PandocConverter stack matches the snapshot 1`] = `
         "ToPort": 9482,
       },
       "Type": "AWS::EC2::SecurityGroupEgress",
+    },
+    "PandocConverterDNS": {
+      "Properties": {
+        "Name": "pandoc-converter.gutools.co.uk",
+        "RecordType": "CNAME",
+        "ResourceRecords": [
+          {
+            "Fn::GetAtt": [
+              "LoadBalancerPandocconverterA9DF7F8D",
+              "DNSName",
+            ],
+          },
+        ],
+        "Stage": "TEST",
+        "TTL": 3600,
+      },
+      "Type": "Guardian::DNS::RecordSet",
     },
     "ParameterStoreReadPandocconverterA144CDA6": {
       "Properties": {

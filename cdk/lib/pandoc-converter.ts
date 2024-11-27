@@ -2,14 +2,19 @@ import { GuEc2App } from '@guardian/cdk';
 import { AccessScope } from '@guardian/cdk/lib/constants';
 import type { GuStackProps } from '@guardian/cdk/lib/constructs/core';
 import { GuStack } from '@guardian/cdk/lib/constructs/core';
+import { GuCname } from '@guardian/cdk/lib/constructs/dns';
 import type { App } from 'aws-cdk-lib';
+import { Duration } from 'aws-cdk-lib';
 import { InstanceClass, InstanceSize, InstanceType } from 'aws-cdk-lib/aws-ec2';
 
 export class PandocConverter extends GuStack {
 	converter: GuEc2App;
+	cname: GuCname;
 
 	constructor(scope: App, id: string, props: GuStackProps) {
 		super(scope, id, props);
+
+		const domainName = 'pandoc-converter.gutools.co.uk';
 
 		this.converter = new GuEc2App(this, {
 			access: {
@@ -18,7 +23,7 @@ export class PandocConverter extends GuStack {
 			app: 'pandoc-converter',
 			applicationPort: 9482,
 			certificateProps: {
-				domainName: 'pandoc-converter.gutools.co.uk',
+				domainName,
 			},
 			imageRecipe: 'pandoc-converter-ubuntu-jammy-x86',
 			instanceType: InstanceType.of(InstanceClass.T3, InstanceSize.NANO),
@@ -33,6 +38,13 @@ export class PandocConverter extends GuStack {
 					fileName: 'pandoc-converter.closure',
 				},
 			},
+		});
+
+		this.cname = new GuCname(this, 'PandocConverterDNS', {
+			app: this.converter,
+			ttl: Duration.hours(1),
+			domainName,
+			resourceRecord: this.converter.loadBalancer.loadBalancerDnsName,
 		});
 	}
 }
