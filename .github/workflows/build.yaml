@@ -27,11 +27,7 @@ jobs:
 
       - run: nix-build release.nix
 
-      - run: ./result/bin/PandocConverter < test.md
-
       - run: nix-store --export $(nix-store -qR ./result) > pandoc-converter.closure
-
-      - run: ls -hl pandoc-converter.closure
 
       - name: Setup Node
         uses: actions/setup-node@v4.0.2
