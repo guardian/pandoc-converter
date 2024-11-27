@@ -234,10 +234,10 @@ exports[`The PandocConverter stack matches the snapshot 1`] = `
       },
       "Type": "AWS::EC2::SecurityGroup",
     },
-    "GuHttpsEgressSecurityGroupPandocconverterfromPandocConverterLoadBalancerPandocconverterSecurityGroupB57C3E5E90009B760117": {
+    "GuHttpsEgressSecurityGroupPandocconverterfromPandocConverterLoadBalancerPandocconverterSecurityGroupB57C3E5E94826AFC8E94": {
       "Properties": {
         "Description": "Load balancer to target",
-        "FromPort": 9000,
+        "FromPort": 9482,
         "GroupId": {
           "Fn::GetAtt": [
             "GuHttpsEgressSecurityGroupPandocconverter0FC6F0C1",
@@ -251,7 +251,7 @@ exports[`The PandocConverter stack matches the snapshot 1`] = `
             "GroupId",
           ],
         },
-        "ToPort": 9000,
+        "ToPort": 9482,
       },
       "Type": "AWS::EC2::SecurityGroupIngress",
     },
@@ -440,7 +440,7 @@ exports[`The PandocConverter stack matches the snapshot 1`] = `
       },
       "Type": "AWS::EC2::SecurityGroup",
     },
-    "LoadBalancerPandocconverterSecurityGrouptoPandocConverterGuHttpsEgressSecurityGroupPandocconverterA5359A009000B6C19B66": {
+    "LoadBalancerPandocconverterSecurityGrouptoPandocConverterGuHttpsEgressSecurityGroupPandocconverterA5359A009482147348C5": {
       "Properties": {
         "Description": "Load balancer to target",
         "DestinationSecurityGroupId": {
@@ -449,7 +449,7 @@ exports[`The PandocConverter stack matches the snapshot 1`] = `
             "GroupId",
           ],
         },
-        "FromPort": 9000,
+        "FromPort": 9482,
         "GroupId": {
           "Fn::GetAtt": [
             "LoadBalancerPandocconverterSecurityGroup5752B8E3",
@@ -457,11 +457,11 @@ exports[`The PandocConverter stack matches the snapshot 1`] = `
           ],
         },
         "IpProtocol": "tcp",
-        "ToPort": 9000,
+        "ToPort": 9482,
       },
       "Type": "AWS::EC2::SecurityGroupEgress",
     },
-    "LoadBalancerPandocconverterSecurityGrouptoPandocConverterWazuhSecurityGroupEAF958DF9000E647C17E": {
+    "LoadBalancerPandocconverterSecurityGrouptoPandocConverterWazuhSecurityGroupEAF958DF948217E9816C": {
       "Properties": {
         "Description": "Load balancer to target",
         "DestinationSecurityGroupId": {
@@ -470,7 +470,7 @@ exports[`The PandocConverter stack matches the snapshot 1`] = `
             "GroupId",
           ],
         },
-        "FromPort": 9000,
+        "FromPort": 9482,
         "GroupId": {
           "Fn::GetAtt": [
             "LoadBalancerPandocconverterSecurityGroup5752B8E3",
@@ -478,7 +478,7 @@ exports[`The PandocConverter stack matches the snapshot 1`] = `
           ],
         },
         "IpProtocol": "tcp",
-        "ToPort": 9000,
+        "ToPort": 9482,
       },
       "Type": "AWS::EC2::SecurityGroupEgress",
     },
@@ -584,7 +584,7 @@ exports[`The PandocConverter stack matches the snapshot 1`] = `
         "HealthCheckProtocol": "HTTP",
         "HealthCheckTimeoutSeconds": 5,
         "HealthyThresholdCount": 5,
-        "Port": 9000,
+        "Port": 9482,
         "Protocol": "HTTP",
         "Tags": [
           {
@@ -669,10 +669,10 @@ exports[`The PandocConverter stack matches the snapshot 1`] = `
       },
       "Type": "AWS::EC2::SecurityGroup",
     },
-    "WazuhSecurityGroupfromPandocConverterLoadBalancerPandocconverterSecurityGroupB57C3E5E9000C3099E72": {
+    "WazuhSecurityGroupfromPandocConverterLoadBalancerPandocconverterSecurityGroupB57C3E5E9482E1A59F98": {
       "Properties": {
         "Description": "Load balancer to target",
-        "FromPort": 9000,
+        "FromPort": 9482,
         "GroupId": {
           "Fn::GetAtt": [
             "WazuhSecurityGroup",
@@ -686,7 +686,7 @@ exports[`The PandocConverter stack matches the snapshot 1`] = `
             "GroupId",
           ],
         },
-        "ToPort": 9000,
+        "ToPort": 9482,
       },
       "Type": "AWS::EC2::SecurityGroupIngress",
     },
@@ -798,7 +798,7 @@ aws s3 cp 's3://",
                     "Ref": "DistributionBucketName",
                   },
                   "/content-api/TEST/pandoc-converter/pandoc-converter.closure' '/pandoc-converter/pandoc-converter.closure'
-converterPath=$(sudo nix-store --import < /pandoc-converter/pandoc-converter.closure | grep PandocConverter); echo "- hello" | $converterPath/bin/PandocConverter > /pandoc-converter/test-output.json",
+converterPath=$(sudo nix-store --import < /pandoc-converter/pandoc-converter.closure | grep PandocConverter); $converterPath/bin/PandocConverter",
                 ],
               ],
             },
