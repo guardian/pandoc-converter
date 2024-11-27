@@ -9,7 +9,6 @@ import Data.Aeson
 import Data.ByteString.Lazy (toStrict)
 import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8)
-import Data.Text.IO qualified as T
 import Debug.Trace (trace)
 import Network.Wai
 import Network.Wai.Handler.Warp
@@ -17,6 +16,8 @@ import Servant hiding (Header)
 import Text.Pandoc hiding (trace)
 
 import Composer qualified
+import Data.Functor ((<&>))
+import Control.Monad.IO.Class (liftIO)
 
 main :: IO ()
 main = run 9482 app
@@ -30,19 +31,19 @@ converterAPI = Proxy
 server :: Server ConverterAPI
 server = return "working, hopefully"
   :<|> return "working, hopefully"
+  :<|> (liftIO . exampleConversion)
 
 type ConverterAPI = Get '[PlainText] Text
-  :<|>"healthcheck" :> Get '[PlainText] Text
+  :<|> "healthcheck" :> Get '[PlainText] Text
+  :<|> "convert" :> ReqBody '[PlainText] Text :> Post '[PlainText] Text -- assume markdown input and composer output for now
 
-exampleConversion :: IO ()
-exampleConversion =
-  T.getContents
-    >>= mdToComposer
-    >>= (id
+exampleConversion :: Text -> IO Text
+exampleConversion input =
+  mdToComposer input
+    <&> (id
       >>> encode
       >>> toStrict
-      >>> decodeUtf8
-      >>> T.putStrLn)
+      >>> decodeUtf8)
   where
     -- toContentEntityRaw :: Composer.Block -> ContentEntityRaw
     -- toContentEntityRaw =
