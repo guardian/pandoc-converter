@@ -9,6 +9,7 @@ exports[`The PandocConverter stack matches the snapshot 1`] = `
       "GuSubnetListParameter",
       "GuEc2App",
       "GuDistributionBucketParameter",
+      "GuCertificate",
       "GuInstanceRole",
       "GuSsmSshPolicy",
       "GuDescribeEC2Policy",
@@ -135,6 +136,41 @@ exports[`The PandocConverter stack matches the snapshot 1`] = `
         },
       },
       "Type": "AWS::AutoScaling::AutoScalingGroup",
+    },
+    "CertificatePandocconverterEF39FF61": {
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "DomainName": "pandoc-converter.gutools.co.uk",
+        "Tags": [
+          {
+            "Key": "App",
+            "Value": "pandoc-converter",
+          },
+          {
+            "Key": "gu:cdk:version",
+            "Value": "TEST",
+          },
+          {
+            "Key": "gu:repo",
+            "Value": "guardian/pandoc-converter",
+          },
+          {
+            "Key": "Name",
+            "Value": "PandocConverter/CertificatePandocconverter",
+          },
+          {
+            "Key": "Stack",
+            "Value": "content-api",
+          },
+          {
+            "Key": "Stage",
+            "Value": "TEST",
+          },
+        ],
+        "ValidationMethod": "DNS",
+      },
+      "Type": "AWS::CertificateManager::Certificate",
+      "UpdateReplacePolicy": "Retain",
     },
     "DescribeEC2PolicyFF5F9295": {
       "Properties": {
@@ -339,6 +375,13 @@ exports[`The PandocConverter stack matches the snapshot 1`] = `
     },
     "ListenerPandocconverterF61A52D7": {
       "Properties": {
+        "Certificates": [
+          {
+            "CertificateArn": {
+              "Ref": "CertificatePandocconverterEF39FF61",
+            },
+          },
+        ],
         "DefaultActions": [
           {
             "TargetGroupArn": {
@@ -350,8 +393,9 @@ exports[`The PandocConverter stack matches the snapshot 1`] = `
         "LoadBalancerArn": {
           "Ref": "LoadBalancerPandocconverterA9DF7F8D",
         },
-        "Port": 8080,
-        "Protocol": "HTTP",
+        "Port": 443,
+        "Protocol": "HTTPS",
+        "SslPolicy": "ELBSecurityPolicy-TLS13-1-2-2021-06",
       },
       "Type": "AWS::ElasticLoadBalancingV2::Listener",
     },
@@ -412,6 +456,15 @@ exports[`The PandocConverter stack matches the snapshot 1`] = `
     "LoadBalancerPandocconverterSecurityGroup5752B8E3": {
       "Properties": {
         "GroupDescription": "Automatically created Security Group for ELB PandocConverterLoadBalancerPandocconverter006202B7",
+        "SecurityGroupIngress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow from anyone on port 443",
+            "FromPort": 443,
+            "IpProtocol": "tcp",
+            "ToPort": 443,
+          },
+        ],
         "Tags": [
           {
             "Key": "App",

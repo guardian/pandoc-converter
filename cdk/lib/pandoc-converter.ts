@@ -17,6 +17,9 @@ export class PandocConverter extends GuStack {
 			},
 			app: 'pandoc-converter',
 			applicationPort: 9482,
+			certificateProps: {
+				domainName: 'pandoc-converter.gutools.co.uk',
+			},
 			imageRecipe: 'pandoc-converter-ubuntu-jammy-x86',
 			instanceType: InstanceType.of(InstanceClass.T3, InstanceSize.NANO),
 			monitoringConfiguration: { noMonitoring: true },
