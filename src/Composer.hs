@@ -6,7 +6,6 @@ module Composer where
 
 import GHC.Generics (Generic)
 import Data.Aeson
-import Data.Map.Strict (Map)
 import Data.Text qualified as T
 -- import Data.Time
 
