@@ -41,7 +41,7 @@ export class PandocConverter extends GuStack {
 		});
 
 		this.cname = new GuCname(this, 'PandocConverterDNS', {
-			app: this.converter,
+			app: 'pandoc-converter',
 			ttl: Duration.hours(1),
 			domainName,
 			resourceRecord: this.converter.loadBalancer.loadBalancerDnsName,
