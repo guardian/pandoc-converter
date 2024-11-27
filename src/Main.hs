@@ -7,7 +7,6 @@ import Control.Category ((>>>))
 import Control.Monad.Trans.State.Strict
 import Data.Aeson
 import Data.ByteString.Lazy (toStrict)
-import Data.Functor ((<&>))
 import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8)
 import Data.Text.IO qualified as T
