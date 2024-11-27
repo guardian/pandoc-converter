@@ -30,8 +30,10 @@ converterAPI = Proxy
 
 server :: Server ConverterAPI
 server = return "working, hopefully 🤞"
+  :<|> return "working, hopefully 🤞"
 
-type ConverterAPI = "healthcheck" :> Get '[PlainText] Text
+type ConverterAPI = Get '[PlainText] Text
+  :<|>"healthcheck" :> Get '[PlainText] Text
 
 exampleConversion :: IO ()
 exampleConversion =
