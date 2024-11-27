@@ -141,7 +141,7 @@ exports[`The PandocConverter stack matches the snapshot 1`] = `
     "CertificatePandocconverterEF39FF61": {
       "DeletionPolicy": "Retain",
       "Properties": {
-        "DomainName": "pandoc-converter.gutools.co.uk",
+        "DomainName": "pandoc-converter.code.dev-gutools.co.uk",
         "Tags": [
           {
             "Key": "App",
@@ -538,7 +538,7 @@ exports[`The PandocConverter stack matches the snapshot 1`] = `
     },
     "PandocConverterDNS": {
       "Properties": {
-        "Name": "pandoc-converter.gutools.co.uk",
+        "Name": "pandoc-converter.code.dev-gutools.co.uk",
         "RecordType": "CNAME",
         "ResourceRecords": [
           {

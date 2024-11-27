@@ -14,7 +14,10 @@ export class PandocConverter extends GuStack {
 	constructor(scope: App, id: string, props: GuStackProps) {
 		super(scope, id, props);
 
-		const domainName = 'pandoc-converter.gutools.co.uk';
+		const domainName =
+			scope.stage === 'PROD'
+				? 'pandoc-converter.gutools.co.uk'
+				: 'pandoc-converter.code.dev-gutools.co.uk';
 
 		this.converter = new GuEc2App(this, {
 			access: {
