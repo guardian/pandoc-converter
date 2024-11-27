@@ -28,8 +28,8 @@ converterAPI :: Proxy ConverterAPI
 converterAPI = Proxy
 
 server :: Server ConverterAPI
-server = return "working, hopefully 🤞"
-  :<|> return "working, hopefully 🤞"
+server = return "working, hopefully"
+  :<|> return "working, hopefully"
 
 type ConverterAPI = Get '[PlainText] Text
   :<|>"healthcheck" :> Get '[PlainText] Text
