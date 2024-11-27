@@ -9,7 +9,6 @@ import Data.Aeson
 import Data.ByteString.Lazy (toStrict)
 import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8)
-import Debug.Trace (trace)
 import Network.Wai
 import Network.Wai.Handler.Warp
 import Servant hiding (Header)
@@ -50,7 +49,6 @@ exampleConversion input =
 
 mdToComposer :: Text -> IO Composer.Block
 mdToComposer txt = runIOorExplode $
-  trace ("Reader options are: " <> show readerOptions <> "\n") $
     readMarkdown readerOptions txt
     >>= writeComposer def
   where
@@ -59,7 +57,6 @@ mdToComposer txt = runIOorExplode $
 
 writeComposer :: PandocMonad m => WriterOptions -> Pandoc -> m Composer.Block
 writeComposer writerOptions document =
-  trace ("Input document is: " <> show document <> "\n") $
   evalStateT (pandocToComposer document) (WriterState writerOptions)
 
 newtype WriterState = WriterState
