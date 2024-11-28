@@ -12,6 +12,7 @@ import Data.Text.Encoding (decodeUtf8)
 import Network.Wai
 import Network.Wai.Handler.Warp
 import Servant hiding (Header)
+import qualified Servant
 import Text.Pandoc hiding (trace)
 
 import Composer qualified
@@ -30,11 +31,19 @@ converterAPI = Proxy
 server :: Server ConverterAPI
 server = return "working, hopefully"
   :<|> return "working, hopefully"
-  :<|> (liftIO . exampleConversion)
+  :<|> exampleConversionHandler
 
 type ConverterAPI = Get '[PlainText] Text
   :<|> "healthcheck" :> Get '[PlainText] Text
-  :<|> "convert" :> ReqBody '[PlainText] Text :> Post '[PlainText] Text -- assume markdown input and composer output for now
+  :<|> "convert"
+    :> ReqBody '[PlainText] Text
+    :> Post '[PlainText] (Headers '[Servant.Header "Access-Control-Allow-Origin" Text] Text)
+    -- assume markdown input and composer output for now
+
+exampleConversionHandler :: Text -> Handler (Headers '[Servant.Header "Access-Control-Allow-Origin" Text] Text)
+exampleConversionHandler input = do
+  result <- liftIO (exampleConversion input)
+  return (addHeader "*" result)
 
 exampleConversion :: Text -> IO Text
 exampleConversion input =
