@@ -47,19 +47,19 @@ type ConverterAPI = Get '[PlainText, JSON] Text
   :<|> "healthcheck" :> Get '[PlainText, JSON] Text
   :<|> "convert"
     :> ReqBody '[PlainText, JSON] Text
-    :> Post '[PlainText, JSON] (Headers '[Servant.Header "Access-Control-Allow-Origin" Text] Text)
+    :> Post '[PlainText, JSON] Text
     -- assume markdown input and composer output for now
   :<|> "convert-docx"
     :> ReqBody '[OctetStream, JSON] ByteString
-    :> Post '[PlainText, JSON] (Headers '[Servant.Header "Access-Control-Allow-Origin" Text] Text)
+    :> Post '[PlainText, JSON] Text
 
 instance FromJSON ByteString where
   parseJSON = mempty
 
-conversionHandler :: (ReaderOptions -> a -> PandocIO Pandoc) -> a -> Handler (Headers '[Servant.Header "Access-Control-Allow-Origin" Text] Text)
+conversionHandler :: (ReaderOptions -> a -> PandocIO Pandoc) -> a -> Handler Text
 conversionHandler reader input = do
   result <- liftIO (conversion reader input)
-  return (addHeader "*" result)
+  return result
 
 conversion :: (ReaderOptions -> a -> PandocIO Pandoc) -> a -> IO Text
 conversion reader input =
