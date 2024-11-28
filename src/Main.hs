@@ -131,7 +131,10 @@ inlineToComposer = \case
     wrapComposerText
       (\t -> "<strong>" <> t <> "</strong>")
       (fmap mconcat (traverse inlineToComposer inlines))
-  Strikeout _ -> return mempty
+  Strikeout inlines ->
+    wrapComposerText
+      (\t -> "<s>" <> t <> "</s>")
+      (fmap mconcat (traverse inlineToComposer inlines))
   Superscript inlines -> wrapComposerText
     (\t -> "<sup>" <> t <> "</sup>")
     (fmap mconcat (traverse inlineToComposer inlines))
