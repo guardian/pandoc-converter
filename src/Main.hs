@@ -12,6 +12,7 @@ import Data.Text qualified as Text
 import Data.Text.Encoding (decodeUtf8)
 import Network.Wai
 import Network.Wai.Handler.Warp
+import Network.Wai.Middleware.Cors
 import Network.Wai.Middleware.Servant.Options
 import Servant hiding (Header)
 import qualified Servant
@@ -25,7 +26,13 @@ main :: IO ()
 main = run 9482 app
 
 app :: Application
-app = provideOptions converterAPI (serve converterAPI server)
+app =
+  cors (const $ Just policy)
+  $ provideOptions converterAPI
+  $ serve converterAPI server
+  where
+  policy = simpleCorsResourcePolicy
+           { corsRequestHeaders = [ "content-type" ] }
 
 converterAPI :: Proxy ConverterAPI
 converterAPI = Proxy
