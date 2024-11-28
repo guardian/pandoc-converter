@@ -127,7 +127,10 @@ inlineToComposer = \case
       (\t -> "<em>" <> t <> "</em>")
       (fmap mconcat (traverse inlineToComposer inlines))
   Underline _ -> return mempty
-  Strong _ -> return mempty
+  Strong inlines ->
+    wrapComposerText
+      (\t -> "<strong>" <> t <> "</strong>")
+      (fmap mconcat (traverse inlineToComposer inlines))
   Strikeout _ -> return mempty
   Superscript inlines -> wrapComposerText
     (\t -> "<sup>" <> t <> "</sup>")
