@@ -6,7 +6,7 @@ module Main where
 import Control.Category ((>>>))
 import Control.Monad.Trans.State.Strict
 import Data.Aeson
-import Data.ByteString.Lazy (toStrict)
+import Data.ByteString.Lazy (ByteString, toStrict)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Encoding (decodeUtf8)
@@ -32,7 +32,8 @@ converterAPI = Proxy
 server :: Server ConverterAPI
 server = return "working, hopefully"
   :<|> return "working, hopefully"
-  :<|> exampleConversionHandler
+  :<|> conversionHandler readMarkdown
+  :<|> conversionHandler readDocx
 
 type ConverterAPI = Get '[PlainText] Text
   :<|> "healthcheck" :> Get '[PlainText] Text
@@ -40,15 +41,18 @@ type ConverterAPI = Get '[PlainText] Text
     :> ReqBody '[PlainText] Text
     :> Post '[PlainText] (Headers '[Servant.Header "Access-Control-Allow-Origin" Text] Text)
     -- assume markdown input and composer output for now
+  :<|> "convert-docx"
+    :> ReqBody '[OctetStream] ByteString
+    :> Post '[PlainText] (Headers '[Servant.Header "Access-Control-Allow-Origin" Text] Text)
 
-exampleConversionHandler :: Text -> Handler (Headers '[Servant.Header "Access-Control-Allow-Origin" Text] Text)
-exampleConversionHandler input = do
-  result <- liftIO (exampleConversion input)
+conversionHandler :: (ReaderOptions -> a -> PandocIO Pandoc) -> a -> Handler (Headers '[Servant.Header "Access-Control-Allow-Origin" Text] Text)
+conversionHandler reader input = do
+  result <- liftIO (conversion reader input)
   return (addHeader "*" result)
 
-exampleConversion :: Text -> IO Text
-exampleConversion input =
-  mdToComposer input
+conversion :: (ReaderOptions -> a -> PandocIO Pandoc) -> a -> IO Text
+conversion reader input =
+  toComposer reader input
     <&> (id
       >>> encode
       >>> toStrict
@@ -57,9 +61,12 @@ exampleConversion input =
     -- toContentEntityRaw :: Composer.Block -> ContentEntityRaw
     -- toContentEntityRaw =
 
-mdToComposer :: Text -> IO Composer.Block
-mdToComposer txt = runIOorExplode $
-    readMarkdown readerOptions txt
+toComposer ::
+  (ReaderOptions -> a -> PandocIO Pandoc) ->
+  a ->
+  IO Composer.Block
+toComposer reader input = runIOorExplode $
+    reader readerOptions input
     >>= writeComposer def
   where
     readerOptions :: ReaderOptions
