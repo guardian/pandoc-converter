@@ -8,6 +8,7 @@ import Control.Monad.Trans.State.Strict
 import Data.Aeson
 import Data.ByteString.Lazy (toStrict)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Text.Encoding (decodeUtf8)
 import Network.Wai
 import Network.Wai.Handler.Warp
@@ -111,7 +112,10 @@ blockToComposer = \case
       (fmap mconcat (sequence items))
     in list (fmap listItem blocks)
   DefinitionList _ -> return mempty
-  Header _ _ _ -> return mempty
+  Header level _attrs inlines -> wrapComposerText
+    (let levelText = Text.pack (show level)
+      in \t -> "<h" <> levelText <> ">" <> t <> "</h" <> levelText <> ">")
+    (fmap mconcat (traverse inlineToComposer inlines))
   HorizontalRule -> return mempty
   Table _ _ _ _ _ _ -> return mempty
   Figure _ _ _ -> return mempty
