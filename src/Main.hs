@@ -146,8 +146,8 @@ inlineToComposer = \case
   Cite _ _ -> return mempty
   Code _ _ -> return mempty
   Space -> return (Composer.Elements [Composer.Text " "])
-  SoftBreak -> return mempty
-  LineBreak -> return mempty
+  SoftBreak -> return (Composer.Elements [Composer.Text "<br>"])
+  LineBreak -> return (Composer.Elements [Composer.Text "<br>"])
   Math _ _ -> return mempty
   RawInline _ _ -> return mempty
   Link _ _ _ -> return mempty
