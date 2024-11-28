@@ -100,7 +100,16 @@ blockToComposer = \case
       (\t -> "<ul>" <> t <> "</ul>")
       (fmap mconcat (sequence items))
     in list (fmap listItem blocks)
-  OrderedList _ _ -> return mempty
+  OrderedList _attrs blocks -> let
+    listItem :: PandocMonad m => [Block] -> StateT WriterState m Composer.Elements
+    listItem bs = wrapComposerText
+      (\t -> "<li>" <> t <> "</li>")
+      (fmap mconcat (traverse blockToComposer bs))
+    list :: PandocMonad m => [StateT WriterState m Composer.Elements] -> StateT WriterState m Composer.Elements
+    list items = wrapComposerText
+      (\t -> "<ol>" <> t <> "</ol>")
+      (fmap mconcat (sequence items))
+    in list (fmap listItem blocks)
   DefinitionList _ -> return mempty
   Header _ _ _ -> return mempty
   HorizontalRule -> return mempty
