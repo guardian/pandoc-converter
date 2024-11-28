@@ -26,6 +26,7 @@ executable PandocConverter
         megaparsec,
         pandoc,
         servant-server,
+        servant-options,
         text,
         time,
         transformers,

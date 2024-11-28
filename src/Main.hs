@@ -12,6 +12,7 @@ import Data.Text qualified as Text
 import Data.Text.Encoding (decodeUtf8)
 import Network.Wai
 import Network.Wai.Handler.Warp
+import Network.Wai.Middleware.Servant.Options
 import Servant hiding (Header)
 import qualified Servant
 import Text.Pandoc hiding (trace)
@@ -24,7 +25,7 @@ main :: IO ()
 main = run 9482 app
 
 app :: Application
-app = serve converterAPI server
+app = provideOptions converterAPI (serve converterAPI server)
 
 converterAPI :: Proxy ConverterAPI
 converterAPI = Proxy
@@ -35,15 +36,18 @@ server = return "working, hopefully"
   :<|> conversionHandler readMarkdown
   :<|> conversionHandler readDocx
 
-type ConverterAPI = Get '[PlainText] Text
-  :<|> "healthcheck" :> Get '[PlainText] Text
+type ConverterAPI = Get '[PlainText, JSON] Text
+  :<|> "healthcheck" :> Get '[PlainText, JSON] Text
   :<|> "convert"
-    :> ReqBody '[PlainText] Text
-    :> Post '[PlainText] (Headers '[Servant.Header "Access-Control-Allow-Origin" Text] Text)
+    :> ReqBody '[PlainText, JSON] Text
+    :> Post '[PlainText, JSON] (Headers '[Servant.Header "Access-Control-Allow-Origin" Text] Text)
     -- assume markdown input and composer output for now
   :<|> "convert-docx"
-    :> ReqBody '[OctetStream] ByteString
-    :> Post '[PlainText] (Headers '[Servant.Header "Access-Control-Allow-Origin" Text] Text)
+    :> ReqBody '[OctetStream, JSON] ByteString
+    :> Post '[PlainText, JSON] (Headers '[Servant.Header "Access-Control-Allow-Origin" Text] Text)
+
+instance FromJSON ByteString where
+  parseJSON = mempty
 
 conversionHandler :: (ReaderOptions -> a -> PandocIO Pandoc) -> a -> Handler (Headers '[Servant.Header "Access-Control-Allow-Origin" Text] Text)
 conversionHandler reader input = do
