@@ -150,7 +150,10 @@ inlineToComposer = \case
   LineBreak -> return (Composer.Elements [Composer.Text "<br>"])
   Math _ _ -> return mempty
   RawInline _ _ -> return mempty
-  Link _ _ _ -> return mempty
+  Link _attrs linkText (url, _title) ->
+    wrapComposerText
+      (\t -> "<a href=\"" <> url <> "\">" <> t <> "</a>")
+      (fmap mconcat (traverse inlineToComposer linkText))
   Image _ _ _ -> return mempty
   Note _ -> return mempty
   Span _ _ -> return mempty
