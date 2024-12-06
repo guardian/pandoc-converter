@@ -26,10 +26,12 @@ executable PandocConverter
         megaparsec,
         pandoc,
         servant-server,
+        servant-options,
         text,
         time,
         transformers,
         wai,
+        wai-cors,
         warp,
 
     hs-source-dirs:   src

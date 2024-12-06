@@ -6,11 +6,14 @@ module Main where
 import Control.Category ((>>>))
 import Control.Monad.Trans.State.Strict
 import Data.Aeson
-import Data.ByteString.Lazy (toStrict)
+import Data.ByteString.Lazy (ByteString, toStrict)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Text.Encoding (decodeUtf8)
 import Network.Wai
 import Network.Wai.Handler.Warp
+import Network.Wai.Middleware.Cors
+import Network.Wai.Middleware.Servant.Options
 import Servant hiding (Header)
 import qualified Servant
 import Text.Pandoc hiding (trace)
@@ -23,7 +26,13 @@ main :: IO ()
 main = run 9482 app
 
 app :: Application
-app = serve converterAPI server
+app =
+  cors (const $ Just policy)
+  $ provideOptions converterAPI
+  $ serve converterAPI server
+  where
+  policy = simpleCorsResourcePolicy
+           { corsRequestHeaders = [ "content-type" ] }
 
 converterAPI :: Proxy ConverterAPI
 converterAPI = Proxy
@@ -31,23 +40,30 @@ converterAPI = Proxy
 server :: Server ConverterAPI
 server = return "working, hopefully"
   :<|> return "working, hopefully"
-  :<|> exampleConversionHandler
+  :<|> conversionHandler readMarkdown
+  :<|> conversionHandler readDocx
 
-type ConverterAPI = Get '[PlainText] Text
-  :<|> "healthcheck" :> Get '[PlainText] Text
+type ConverterAPI = Get '[PlainText, JSON] Text
+  :<|> "healthcheck" :> Get '[PlainText, JSON] Text
   :<|> "convert"
-    :> ReqBody '[PlainText] Text
-    :> Post '[PlainText] (Headers '[Servant.Header "Access-Control-Allow-Origin" Text] Text)
+    :> ReqBody '[PlainText, JSON] Text
+    :> Post '[PlainText, JSON] Text
     -- assume markdown input and composer output for now
+  :<|> "convert-docx"
+    :> ReqBody '[OctetStream, JSON] ByteString
+    :> Post '[PlainText, JSON] Text
 
-exampleConversionHandler :: Text -> Handler (Headers '[Servant.Header "Access-Control-Allow-Origin" Text] Text)
-exampleConversionHandler input = do
-  result <- liftIO (exampleConversion input)
-  return (addHeader "*" result)
+instance FromJSON ByteString where
+  parseJSON = mempty
 
-exampleConversion :: Text -> IO Text
-exampleConversion input =
-  mdToComposer input
+conversionHandler :: (ReaderOptions -> a -> PandocIO Pandoc) -> a -> Handler Text
+conversionHandler reader input = do
+  result <- liftIO (conversion reader input)
+  return result
+
+conversion :: (ReaderOptions -> a -> PandocIO Pandoc) -> a -> IO Text
+conversion reader input =
+  toComposer reader input
     <&> (id
       >>> encode
       >>> toStrict
@@ -56,9 +72,12 @@ exampleConversion input =
     -- toContentEntityRaw :: Composer.Block -> ContentEntityRaw
     -- toContentEntityRaw =
 
-mdToComposer :: Text -> IO Composer.Block
-mdToComposer txt = runIOorExplode $
-    readMarkdown readerOptions txt
+toComposer ::
+  (ReaderOptions -> a -> PandocIO Pandoc) ->
+  a ->
+  IO Composer.Block
+toComposer reader input = runIOorExplode $
+    reader readerOptions input
     >>= writeComposer def
   where
     readerOptions :: ReaderOptions
@@ -100,9 +119,21 @@ blockToComposer = \case
       (\t -> "<ul>" <> t <> "</ul>")
       (fmap mconcat (sequence items))
     in list (fmap listItem blocks)
-  OrderedList _ _ -> return mempty
+  OrderedList _attrs blocks -> let
+    listItem :: PandocMonad m => [Block] -> StateT WriterState m Composer.Elements
+    listItem bs = wrapComposerText
+      (\t -> "<li>" <> t <> "</li>")
+      (fmap mconcat (traverse blockToComposer bs))
+    list :: PandocMonad m => [StateT WriterState m Composer.Elements] -> StateT WriterState m Composer.Elements
+    list items = wrapComposerText
+      (\t -> "<ol>" <> t <> "</ol>")
+      (fmap mconcat (sequence items))
+    in list (fmap listItem blocks)
   DefinitionList _ -> return mempty
-  Header _ _ _ -> return mempty
+  Header level _attrs inlines -> wrapComposerText
+    (let levelText = Text.pack (show level)
+      in \t -> "<h" <> levelText <> ">" <> t <> "</h" <> levelText <> ">")
+    (fmap mconcat (traverse inlineToComposer inlines))
   HorizontalRule -> return mempty
   Table _ _ _ _ _ _ -> return mempty
   Figure _ _ _ -> return mempty
@@ -127,8 +158,14 @@ inlineToComposer = \case
       (\t -> "<em>" <> t <> "</em>")
       (fmap mconcat (traverse inlineToComposer inlines))
   Underline _ -> return mempty
-  Strong _ -> return mempty
-  Strikeout _ -> return mempty
+  Strong inlines ->
+    wrapComposerText
+      (\t -> "<strong>" <> t <> "</strong>")
+      (fmap mconcat (traverse inlineToComposer inlines))
+  Strikeout inlines ->
+    wrapComposerText
+      (\t -> "<s>" <> t <> "</s>")
+      (fmap mconcat (traverse inlineToComposer inlines))
   Superscript inlines -> wrapComposerText
     (\t -> "<sup>" <> t <> "</sup>")
     (fmap mconcat (traverse inlineToComposer inlines))
@@ -140,11 +177,14 @@ inlineToComposer = \case
   Cite _ _ -> return mempty
   Code _ _ -> return mempty
   Space -> return (Composer.Elements [Composer.Text " "])
-  SoftBreak -> return mempty
-  LineBreak -> return mempty
+  SoftBreak -> return (Composer.Elements [Composer.Text " "])
+  LineBreak -> return (Composer.Elements [Composer.Text "<br>"])
   Math _ _ -> return mempty
   RawInline _ _ -> return mempty
-  Link _ _ _ -> return mempty
+  Link _attrs linkText (url, _title) ->
+    wrapComposerText
+      (\t -> "<a href=\"" <> url <> "\">" <> t <> "</a>")
+      (fmap mconcat (traverse inlineToComposer linkText))
   Image _ _ _ -> return mempty
   Note _ -> return mempty
   Span _ _ -> return mempty
