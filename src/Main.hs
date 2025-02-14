@@ -4,20 +4,23 @@
 module Main where
 
 import Control.Category ((>>>))
+import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.State.Strict
 import Data.Aeson
 import Data.ByteString.Lazy (toStrict)
+import Data.Functor ((<&>))
 import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8)
 import Network.Wai
 import Network.Wai.Handler.Warp
 import Servant hiding (Header)
-import qualified Servant
-import Text.Pandoc hiding (trace)
+import Servant qualified
+import Text.Pandoc hiding (TextWriter, trace)
+import Text.Pandoc qualified
 
+import Capi qualified
 import Composer qualified
-import Data.Functor ((<&>))
-import Control.Monad.IO.Class (liftIO)
+import Reader qualified
 
 main :: IO ()
 main = run 9482 app
@@ -25,20 +28,44 @@ main = run 9482 app
 app :: Application
 app = serve converterAPI server
 
-converterAPI :: Proxy ConverterAPI
+converterAPI :: Proxy (ConverterAPI PandocIO)
 converterAPI = Proxy
 
-server :: Server ConverterAPI
+server :: Server (ConverterAPI PandocIO)
 server = return "working, hopefully"
   :<|> return "working, hopefully"
   :<|> exampleConversionHandler
+  :<|> readCapi
 
-type ConverterAPI = Get '[PlainText] Text
+type ConverterAPI m = Get '[PlainText] Text
   :<|> "healthcheck" :> Get '[PlainText] Text
   :<|> "convert"
     :> ReqBody '[PlainText] Text
     :> Post '[PlainText] (Headers '[Servant.Header "Access-Control-Allow-Origin" Text] Text)
     -- assume markdown input and composer output for now
+  :<|> "read-capi"
+    :> QueryParam "output-format" (TextWriter m)
+    :> ReqBody '[JSON] Capi.Content
+    :> Post '[PlainText] (Headers '[Servant.Header "Access-Control-Allow-Origin" Text] Text)
+
+newtype TextWriter m = TextWriter {unTextWriter :: WriterOptions -> Pandoc -> m Text}
+
+instance FromHttpApiData (TextWriter PandocIO) where
+  parseQueryParam format =
+    case lookup format writers of
+      Just (Text.Pandoc.TextWriter w) -> Right (TextWriter w)
+      Just (Text.Pandoc.ByteStringWriter _) -> Left ("Unsupported writer: " <> format)
+      Nothing -> Left ("Unknown writer: " <> format)
+
+readCapi ::
+  Maybe (TextWriter PandocIO) ->
+  Capi.Content ->
+  Handler (Headers '[Servant.Header "Access-Control-Allow-Origin" Text] Text)
+readCapi writer content = do
+  let pandocWriter = maybe writeMarkdown unTextWriter writer
+  result <- liftIO
+    (runIOorExplode (pandocWriter def (Reader.contentToPandoc content)))
+  return (addHeader "*" result)
 
 exampleConversionHandler :: Text -> Handler (Headers '[Servant.Header "Access-Control-Allow-Origin" Text] Text)
 exampleConversionHandler input = do

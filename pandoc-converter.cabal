@@ -13,7 +13,9 @@ executable PandocConverter
     import:           warnings
     main-is:          Main.hs
     other-modules:
+      Capi
       Composer
+      Reader
     -- other-extensions:
     build-depends:
         aeson,
@@ -24,6 +26,7 @@ executable PandocConverter
         generic-lens,
         lens,
         megaparsec,
+        mtl,
         pandoc,
         servant-server,
         text,
