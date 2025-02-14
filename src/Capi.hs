@@ -5,7 +5,8 @@ import Data.Aeson
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Data.Coerce (coerce)
-import Text.Pandoc (Block (..), Inline (..))
+import Text.Pandoc (Block (..), Inline (..), runIOorExplode, def, Pandoc (..))
+import Text.Pandoc.Readers (readHtml)
 
 data Content = Content
  { fields :: ContentFields
@@ -28,5 +29,7 @@ instance FromJSON ContentFields
 newtype HtmlAsText = HtmlAsText Text
   deriving (FromJSON)
 
-parseHtml :: HtmlAsText -> Block
-parseHtml h = Para [Str (coerce h)]
+parseHtml :: HtmlAsText -> IO [Block]
+parseHtml (HtmlAsText t) = do
+  Pandoc _meta blocks <- runIOorExplode (readHtml def t)
+  return blocks

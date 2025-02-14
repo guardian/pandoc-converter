@@ -16,21 +16,18 @@ import Text.Pandoc.UTF8 qualified as UTF8
 
 import Capi qualified
 
-readCapi ::
-  (PandocMonad m, ToSources a) =>
-  ReaderOptions ->
-  a ->
-  m Pandoc
-readCapi options input = fmap contentToPandoc (readPandocFromJSON options input)
-
-contentToPandoc :: Capi.Content -> Pandoc
-contentToPandoc Capi.Content{fields = Capi.ContentFields{..}} =
-  Pandoc mempty
-    [ Header 1 nullAttr [Str headline]
-    , Capi.parseHtml standfirst
-    , Capi.parseHtml bylineHtml
-    , Capi.parseHtml body
+contentToPandoc :: Capi.Content -> IO Pandoc
+contentToPandoc Capi.Content{fields = Capi.ContentFields{..}} = do
+  standfirstBlocks <- Capi.parseHtml standfirst
+  bylineBlocks <- Capi.parseHtml bylineHtml
+  bodyBlocks <- Capi.parseHtml body
+  return (Pandoc mempty
+    (concat [ [Header 1 nullAttr [Str headline]]
+    , standfirstBlocks
+    , bylineBlocks
+    , bodyBlocks
     ]
+    ))
 
 readPandocFromJSON :: (PandocMonad m, ToSources a)
          => ReaderOptions

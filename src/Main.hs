@@ -63,8 +63,8 @@ readCapi ::
   Handler (Headers '[Servant.Header "Access-Control-Allow-Origin" Text] Text)
 readCapi writer content = do
   let pandocWriter = maybe writeMarkdown unTextWriter writer
-  result <- liftIO
-    (runIOorExplode (pandocWriter def (Reader.contentToPandoc content)))
+  pandoc <- liftIO (Reader.contentToPandoc content)
+  result <- liftIO (runIOorExplode (pandocWriter def pandoc))
   return (addHeader "*" result)
 
 exampleConversionHandler :: Text -> Handler (Headers '[Servant.Header "Access-Control-Allow-Origin" Text] Text)
