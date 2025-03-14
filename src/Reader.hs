@@ -21,13 +21,15 @@ contentToPandoc Capi.Content{fields = Capi.ContentFields{..}} = do
   standfirstBlocks <- Capi.parseHtml standfirst
   bylineBlocks <- Capi.parseHtml bylineHtml
   bodyBlocks <- Capi.parseHtml body
+  mainBlocks <- Capi.parseHtml main
   return (Pandoc mempty
-    (concat [ [Header 1 nullAttr [Str headline]]
-    , standfirstBlocks
-    , bylineBlocks
-    , bodyBlocks
-    ]
-    ))
+    (concat
+      [ [Header 1 nullAttr [Str headline]]
+      , standfirstBlocks
+      , mainBlocks
+      , bylineBlocks
+      , bodyBlocks
+      ]))
 
 readPandocFromJSON :: (PandocMonad m, ToSources a)
          => ReaderOptions

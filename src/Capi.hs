@@ -21,6 +21,7 @@ data ContentFields = ContentFields
   , bylineHtml :: HtmlAsText
   , body :: HtmlAsText
   , bodyText :: Text
+  , main :: HtmlAsText
   }
   deriving (Generic)
 
