@@ -4,8 +4,7 @@ module Capi where
 import Data.Aeson
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Data.Coerce (coerce)
-import Text.Pandoc (Block (..), Inline (..), runIOorExplode, def, Pandoc (..))
+import Text.Pandoc (Block (..), runIOorExplode, def, Pandoc (..))
 import Text.Pandoc.Readers (readHtml)
 
 data EndpointWrapper = EndpointWrapper
@@ -28,7 +27,8 @@ data ItemResponse = ItemResponse
   { status :: Text
   , userTier :: Text
   , total :: Integer
-  , content :: Content
+  , content :: Maybe Content
+  , results :: Maybe [Content]
   } deriving (Show, Generic)
 
 instance FromJSON ItemResponse
@@ -40,19 +40,19 @@ data SectionsResponse = SectionsResponse
   deriving (Show, Generic)
 
 data Content = Content
- { fields :: ContentFields
+ { fields :: Maybe ContentFields
  }
  deriving (Show, Generic)
 
 instance FromJSON Content
 
 data ContentFields = ContentFields
-  { headline :: Text
-  , standfirst :: HtmlAsText
-  , bylineHtml :: HtmlAsText
-  , body :: HtmlAsText
-  , bodyText :: Text
-  , main :: HtmlAsText
+  { headline :: Maybe Text
+  , standfirst :: Maybe HtmlAsText
+  , bylineHtml :: Maybe HtmlAsText
+  , body :: Maybe HtmlAsText
+  , bodyText :: Maybe Text
+  , main :: Maybe HtmlAsText
   }
   deriving (Show, Generic)
 

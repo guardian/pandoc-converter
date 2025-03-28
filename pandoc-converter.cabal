@@ -28,6 +28,7 @@ executable PandocConverter
         megaparsec,
         mtl,
         pandoc,
+        pandoc-types,
         servant-server,
         text,
         time,

@@ -10,6 +10,7 @@ import Data.Aeson
 import Data.ByteString.Lazy (toStrict)
 import Data.Functor ((<&>))
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Text.Encoding (decodeUtf8)
 import Network.Wai
 import Network.Wai.Handler.Warp
@@ -17,6 +18,7 @@ import Servant hiding (Header)
 import Servant qualified
 import Text.Pandoc hiding (TextWriter, trace)
 import Text.Pandoc qualified
+import Text.Pandoc.Walk (walk)
 
 import Capi qualified
 import Composer qualified
@@ -65,7 +67,14 @@ readCapi writer (Capi.EndpointWrapper capiResponse) = do
   let pandocWriter = maybe writeMarkdown unTextWriter writer
   let writerOptions = def { writerWrapText = WrapNone }
   pandoc <- liftIO (Reader.responseToPandoc capiResponse)
-  result <- liftIO (runIOorExplode (pandocWriter writerOptions pandoc))
+  let updateLinks = \case
+        l@(Link attrs alt (url, title)) -> case
+          Text.stripPrefix "https://www.theguardian.com/" url of
+            Just u -> Link attrs alt ("capi-org:" <> u, title)
+            Nothing -> l
+        x -> x
+  let updatedPandoc = walk updateLinks pandoc
+  result <- liftIO (runIOorExplode (pandocWriter writerOptions updatedPandoc))
   return (addHeader "*" result)
 
 exampleConversionHandler :: Text -> Handler (Headers '[Servant.Header "Access-Control-Allow-Origin" Text] Text)
