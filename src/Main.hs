@@ -71,7 +71,10 @@ readCapi writer (Capi.EndpointWrapper capiResponse) = do
         l@(Link attrs alt (url, title)) -> case
           Text.stripPrefix "https://www.theguardian.com/" url of
             Just u -> Link attrs alt ("capi-org:" <> u, title)
-            Nothing -> l
+            Nothing ->
+              if Text.isPrefixOf "profile/" url
+              then Link attrs alt ("capi-org:" <> url, title)
+              else l
         x -> x
   let updatedPandoc = walk updateLinks pandoc
   result <- liftIO (runIOorExplode (pandocWriter writerOptions updatedPandoc))
