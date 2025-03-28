@@ -45,7 +45,7 @@ type ConverterAPI m = Get '[PlainText] Text
     -- assume markdown input and composer output for now
   :<|> "read-capi"
     :> QueryParam "output-format" (TextWriter m)
-    :> ReqBody '[JSON] Capi.Content
+    :> ReqBody '[JSON] Capi.EndpointWrapper
     :> Post '[PlainText] (Headers '[Servant.Header "Access-Control-Allow-Origin" Text] Text)
 
 newtype TextWriter m = TextWriter {unTextWriter :: WriterOptions -> Pandoc -> m Text}
@@ -59,12 +59,12 @@ instance FromHttpApiData (TextWriter PandocIO) where
 
 readCapi ::
   Maybe (TextWriter PandocIO) ->
-  Capi.Content ->
+  Capi.EndpointWrapper ->
   Handler (Headers '[Servant.Header "Access-Control-Allow-Origin" Text] Text)
-readCapi writer content = do
+readCapi writer (Capi.EndpointWrapper capiResponse) = do
   let pandocWriter = maybe writeMarkdown unTextWriter writer
   let writerOptions = def { writerWrapText = WrapNone }
-  pandoc <- liftIO (Reader.contentToPandoc content)
+  pandoc <- liftIO (Reader.responseToPandoc capiResponse)
   result <- liftIO (runIOorExplode (pandocWriter writerOptions pandoc))
   return (addHeader "*" result)
 

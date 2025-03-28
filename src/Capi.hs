@@ -8,10 +8,41 @@ import Data.Coerce (coerce)
 import Text.Pandoc (Block (..), Inline (..), runIOorExplode, def, Pandoc (..))
 import Text.Pandoc.Readers (readHtml)
 
+data EndpointWrapper = EndpointWrapper
+  { response :: Response
+  }
+  deriving (Show, Generic)
+
+instance FromJSON EndpointWrapper
+
+data Response
+  = Item ItemResponse
+  | Search SearchResponse
+  | Sections SectionsResponse
+  deriving (Show, Generic)
+
+instance FromJSON Response where
+  parseJSON = fmap Item . parseJSON
+
+data ItemResponse = ItemResponse
+  { status :: Text
+  , userTier :: Text
+  , total :: Integer
+  , content :: Content
+  } deriving (Show, Generic)
+
+instance FromJSON ItemResponse
+
+data SearchResponse = SearchResponse
+  deriving (Show, Generic)
+
+data SectionsResponse = SectionsResponse
+  deriving (Show, Generic)
+
 data Content = Content
  { fields :: ContentFields
  }
- deriving (Generic)
+ deriving (Show, Generic)
 
 instance FromJSON Content
 
@@ -23,12 +54,12 @@ data ContentFields = ContentFields
   , bodyText :: Text
   , main :: HtmlAsText
   }
-  deriving (Generic)
+  deriving (Show, Generic)
 
 instance FromJSON ContentFields
 
 newtype HtmlAsText = HtmlAsText Text
-  deriving (FromJSON)
+  deriving (Show, FromJSON)
 
 parseHtml :: HtmlAsText -> IO [Block]
 parseHtml (HtmlAsText t) = do
