@@ -2,6 +2,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 
 -- | Provides a pandoc reader which can convert from the json representation
 -- output by capi.
@@ -14,6 +15,7 @@ import Data.Text qualified as T
 import Text.Pandoc
 import Text.Pandoc.Sources (ToSources (toSources), sourcesToText)
 import Text.Pandoc.UTF8 qualified as UTF8
+import Text.Pandoc.Walk (walk)
 
 import Capi qualified
 import qualified Data.Map.Strict as Map
@@ -38,32 +40,57 @@ responseToPandoc = \case
 contentToPandoc :: Capi.Content -> Meta -> IO Pandoc
 contentToPandoc content meta = do
   blocks <- contentToBlocks 1 content
-  return (Pandoc meta blocks)
+  let updateMeta = case content.fields of
+        Just Capi.ContentFields{headline = Just h} ->
+          Map.insert "title" (MetaString h)
+        _noHeadline -> id
+  return (Pandoc (Meta (updateMeta (unMeta meta))) blocks)
 
 resultsToPandoc :: Maybe [Capi.Content] -> Meta -> IO Pandoc
 resultsToPandoc (Just results) meta = do
-  blocks <- traverse (contentToBlocks 1) results
-  return (Pandoc meta (concat blocks))
+  resultBlocks <- traverse (contentToBlocks 2) results
+  return
+    (Pandoc meta
+       (Header 1 nullAttr [Str "Results"] : concat resultBlocks))
 resultsToPandoc Nothing meta = return (Pandoc meta [Para [Str "Nothing at all here: is this some other capi response type?"]])
 
 contentToBlocks :: Int -> Capi.Content -> IO [Block]
-contentToBlocks headerLevel Capi.Content{fields = Just Capi.ContentFields{..}} = do
+contentToBlocks baseHeaderLevel Capi.Content {fields = Just Capi.ContentFields {..}} = do
+  let demoteHeadersBy n = \case
+        Header m attrs contents -> Header (m + n) attrs contents
+        x -> x
+      demoteH1s = \case
+        -- hides iframe-produced extra h1s in articles
+        -- can remove for a nicer solution when no longer parsing the html with
+        -- pandoc
+        Header 1 attrs contents -> Header 2 attrs contents
+        x -> x
   standfirstBlocks <- maybe (pure []) Capi.parseHtml standfirst
   bylineBlocks <- maybe (pure []) Capi.parseHtml bylineHtml
   bodyBlocks <- maybe (pure []) Capi.parseHtml body
   mainBlocks <- maybe (pure []) Capi.parseHtml main
-  return (concat
-      [ [Header headerLevel nullAttr [Str (fromMaybe "" headline)]]
-      , standfirstBlocks
-      , mainBlocks
-      , bylineBlocks
-      , bodyBlocks
-      ])
-contentToBlocks headerLevel c = return
-  [ Header headerLevel nullAttr [Str "Unknown content"]
-  , Para [Str "No fields found, don’t know what this is!"]
-  , Para [Str (T.pack (show c))]
-  ]
+  return
+    ( walk
+        (demoteHeadersBy (baseHeaderLevel - 1))
+        ( Header 1 nullAttr [Str (fromMaybe "" headline)]
+            : ( walk
+                  demoteH1s
+                  ( concat
+                      [ standfirstBlocks,
+                        mainBlocks,
+                        bylineBlocks,
+                        bodyBlocks
+                      ]
+                  )
+              )
+        )
+    )
+contentToBlocks headerLevel c =
+  return
+    [ Header headerLevel nullAttr [Str "Unknown content"],
+      Para [Str "No fields found, don’t know what this is!"],
+      Para [Str (T.pack (show c))]
+    ]
 
 readPandocFromJSON :: (PandocMonad m, ToSources a)
          => ReaderOptions
