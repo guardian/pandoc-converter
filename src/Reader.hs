@@ -82,7 +82,11 @@ resultsToPandoc (Just results) meta = do
 resultsToPandoc Nothing meta = return (Pandoc meta [Para [Str "Nothing at all here: is this some other capi response type?"]])
 
 contentToBlocks :: Int -> Capi.Content -> IO [Block]
-contentToBlocks baseHeaderLevel Capi.Content {fields = Just Capi.ContentFields {..}, tags} = do
+contentToBlocks baseHeaderLevel Capi.Content
+  { fields = Just Capi.ContentFields {..},
+    tags,
+    blocks
+  } = do
   let demoteHeadersBy n = \case
         Header m attrs contents -> Header (m + n) attrs contents
         x -> x
@@ -94,7 +98,13 @@ contentToBlocks baseHeaderLevel Capi.Content {fields = Just Capi.ContentFields {
         x -> x
   standfirstBlocks <- maybe (pure []) Capi.parseHtml standfirst
   bylineBlocks <- maybe (pure []) Capi.parseHtml bylineHtml
-  bodyBlocks <- maybe (pure []) Capi.parseHtml body
+  -- bodyBlocks <- maybe (pure []) Capi.parseHtml body
+  bodyBlocks <- case blocks of
+        Nothing -> return [ Para [Str "No blocks found"] ]
+        (Just Capi.Blocks{body = Nothing}) -> return [ Para [Str "No body blocks found"] ]
+        (Just Capi.Blocks{body = Just body}) ->
+          fmap concat (traverse capiBlockToBlock body) -- TODO: handle multiple blocks better?
+
   mainBlocks <- maybe (pure []) Capi.parseHtml main
   let tagBlocks =
         case tags of
@@ -126,6 +136,35 @@ contentToBlocks headerLevel c =
       Para [Str "No fields found, don’t know what this is!"],
       Para [Str (T.pack (show c))]
     ]
+
+capiBlockToBlock :: Capi.Block -> IO [Block]
+capiBlockToBlock Capi.Block{elements} =
+  fmap concat (traverse capiBlockElementToBlock elements)
+
+capiBlockElementToBlock :: Capi.BlockElement -> IO [Block]
+capiBlockElementToBlock = \case
+  Capi.TextElement Capi.TextElementFields{html} ->
+    maybe (return [ Para [Str "Empty text element"] ]) Capi.parseHtml html
+  Capi.ImageElement Capi.ImageElementFields{caption, alt, mediaApiUri} ->
+    return [Figure
+            mempty
+            (Caption Nothing (maybe [] (\c -> [ Para [Str c] ]) caption))
+            [ Para [
+               Image mempty [Str (fromMaybe (fromMaybe "" alt) caption)] (fromMaybe "" mediaApiUri, fromMaybe "" alt) ]]]
+  Capi.VideoElement Capi.VideoElementFields{url, title, description} ->
+    return [ Figure
+             mempty
+             (Caption Nothing (maybe [] (\d -> [ Para [ Str d ] ]) description))
+             [ Para
+               [ Link
+                 mempty
+                 (maybe [] (\t -> [Str t]) title)
+                 (fromMaybe "" url, fromMaybe "" title)
+               ]
+             ]
+           ]
+  Capi.UnknownBlockElement elementType ->
+    return [ Para [Str ("Unknown block element: " <> elementType)]  ]
 
 readPandocFromJSON :: (PandocMonad m, ToSources a)
          => ReaderOptions

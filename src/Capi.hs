@@ -2,6 +2,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE LambdaCase #-}
 -- | Redefinition of some parts of the content-api-models model
 module Capi where
 
@@ -9,8 +10,10 @@ import Data.Aeson
 import Data.Text (Text)
 import Data.Text qualified as Text
 import GHC.Generics (Generic)
-import Text.Pandoc (Block (..), runIOorExplode, def, Pandoc (..))
+import Text.Pandoc (runIOorExplode, def, Pandoc (..))
+import Text.Pandoc qualified as Pandoc
 import Text.Pandoc.Readers (readHtml)
+import Data.Aeson.Types (Parser)
 
 data EndpointWrapper = EndpointWrapper
   { response :: Response
@@ -49,6 +52,7 @@ data SectionsResponse = SectionsResponse
 data Content = Content
  { fields :: Maybe ContentFields
  , tags :: Maybe [Tag]
+ , blocks :: Maybe Blocks
  }
  deriving (Show, Generic)
 
@@ -69,7 +73,7 @@ instance FromJSON ContentFields
 newtype HtmlAsText = HtmlAsText Text
   deriving (Show, FromJSON)
 
-parseHtml :: HtmlAsText -> IO [Block]
+parseHtml :: HtmlAsText -> IO [Pandoc.Block]
 parseHtml (HtmlAsText t) = do
   Pandoc _meta blocks <- runIOorExplode (readHtml def t)
   return blocks
@@ -144,3 +148,70 @@ instance FromJSON TagType where
         , ("paid-content", PaidContent)
         , ("campaign", Campaign)
         ])
+
+data Blocks = Blocks
+  { body :: Maybe [Block]
+  }
+  deriving (Show, Generic)
+
+instance FromJSON Blocks
+
+data Block = Block
+  { id :: Text
+  , elements :: [BlockElement]
+  }
+  deriving (Show, Generic)
+
+instance FromJSON Block
+
+data BlockElement
+  = TextElement TextElementFields
+  | ImageElement ImageElementFields
+  | VideoElement VideoElementFields
+  | UnknownBlockElement Text
+  deriving (Show, Generic)
+
+instance FromJSON BlockElement where
+  parseJSON = withObject "BlockElement" \o -> do
+    elementType <- o .: "type"
+    withText "BlockElement.elementType" (parseElementType o) elementType
+    where
+      parseElementType :: Object -> Text -> Parser BlockElement
+      parseElementType o = \case
+        "text" -> do
+          textFields <- o .: "textTypeData"
+          return (TextElement textFields)
+        "image" -> do
+          imageFields <- o .: "imageTypeData"
+          return (ImageElement imageFields)
+        "video" -> do
+          videoFields <- o .: "videoTypeData"
+          return (VideoElement videoFields)
+        t -> return (UnknownBlockElement t)
+
+  --{ _type :: ElementType}
+
+data TextElementFields = TextElementFields
+  { html :: Maybe HtmlAsText
+  }
+  deriving (Show, Generic)
+
+instance FromJSON TextElementFields
+
+data ImageElementFields = ImageElementFields
+  { caption :: Maybe Text
+  , alt :: Maybe Text
+  , mediaApiUri :: Maybe Text
+  }
+  deriving (Show, Generic)
+
+instance FromJSON ImageElementFields
+
+data VideoElementFields = VideoElementFields
+ { url :: Maybe Text
+ , title :: Maybe Text
+ , description :: Maybe Text
+ }
+ deriving (Show, Generic)
+
+instance FromJSON VideoElementFields
