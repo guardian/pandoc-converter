@@ -111,7 +111,7 @@ contentToBlocks baseHeaderLevel Capi.Content
           Nothing -> []
           Just ts ->
             [ Para [Str "Article tags:"]
-            , BulletList (ts <&> \t -> [Para [Link nullAttr mempty ("capi-org:" <> t.id, "")]])
+            , BulletList (ts <&> \t -> [Para [Link nullAttr [Str t.id] ("capi-org:" <> t.id, "Tag: " <> t.id)]])
             ]
   return
     ( walk
