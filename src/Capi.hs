@@ -14,6 +14,7 @@ import Text.Pandoc (runIOorExplode, def, Pandoc (..))
 import Text.Pandoc qualified as Pandoc
 import Text.Pandoc.Readers (readHtml)
 import Data.Aeson.Types (Parser)
+import Data.Time (UTCTime)
 
 data EndpointWrapper = EndpointWrapper
   { response :: Response
@@ -53,6 +54,7 @@ data Content = Content
  { fields :: Maybe ContentFields
  , tags :: Maybe [Tag]
  , blocks :: Maybe Blocks
+ , webPublicationDate :: Maybe UTCTime
  }
  deriving (Show, Generic)
 
@@ -65,6 +67,7 @@ data ContentFields = ContentFields
   , body :: Maybe HtmlAsText
   , bodyText :: Maybe Text
   , main :: Maybe HtmlAsText
+  , lastModified :: Maybe UTCTime
   }
   deriving (Show, Generic)
 

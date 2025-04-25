@@ -85,7 +85,8 @@ contentToBlocks :: Int -> Capi.Content -> IO [Block]
 contentToBlocks baseHeaderLevel Capi.Content
   { fields = Just Capi.ContentFields {..},
     tags,
-    blocks
+    blocks,
+    webPublicationDate
   } = do
   let demoteHeadersBy n = \case
         Header m attrs contents -> Header (m + n) attrs contents
@@ -113,6 +114,15 @@ contentToBlocks baseHeaderLevel Capi.Content
             [ Para [Str "Article tags:"]
             , BulletList (ts <&> \t -> [Para [Link nullAttr [Str t.id] ("capi-org:" <> t.id, "Tag: " <> t.id)]])
             ]
+  let publishTimeBlocks = case webPublicationDate of
+        Nothing -> [Para [Str "(No publication dates)"]]
+        Just t -> [Para [Str ("Published: " <> T.pack (show t)
+                               <> maybe
+                                 ""
+                                 (\t -> " (last modified: " <> T.pack (show t) <> ")")
+                                 lastModified
+                             )]]
+
   return
     ( walk
         (demoteHeadersBy (baseHeaderLevel - 1))
@@ -123,6 +133,7 @@ contentToBlocks baseHeaderLevel Capi.Content
                       [ standfirstBlocks,
                         mainBlocks,
                         bylineBlocks,
+                        publishTimeBlocks,
                         bodyBlocks,
                         tagBlocks
                       ]
