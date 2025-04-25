@@ -144,7 +144,7 @@ capiBlockToBlock Capi.Block{elements} =
 capiBlockElementToBlock :: Capi.BlockElement -> IO [Block]
 capiBlockElementToBlock = \case
   Capi.TextElement Capi.TextElementFields{html} ->
-    maybe (return [ Para [Str "Empty text element"] ]) Capi.parseHtml html
+    maybe (return [ Para [Str "(Empty text element)"] ]) Capi.parseHtml html
   Capi.ImageElement Capi.ImageElementFields{caption, alt, mediaApiUri} ->
     return [Figure
             mempty
@@ -164,7 +164,7 @@ capiBlockElementToBlock = \case
              ]
            ]
   Capi.UnknownBlockElement elementType ->
-    return [ Para [Str ("Unknown block element: " <> elementType)]  ]
+    return [ Para [Str ("(Unknown block element: " <> elementType <> ")")]  ]
 
 readPandocFromJSON :: (PandocMonad m, ToSources a)
          => ReaderOptions
