@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE BlockArguments #-}
 module Main where
 
 import Control.Category ((>>>))
@@ -12,6 +13,7 @@ import Data.Functor ((<&>))
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Encoding (decodeUtf8)
+import Data.Text.IO qualified as Text
 import Network.Wai
 import Network.Wai.Handler.Warp
 import Servant hiding (Header)
@@ -23,9 +25,47 @@ import Text.Pandoc.Walk (walk)
 import Capi qualified
 import Composer qualified
 import Reader qualified
+import System.Environment (getArgs)
+import Data.Foldable (for_)
 
 main :: IO ()
-main = run 9482 app
+main = do
+  args <- getArgs
+  case args of
+    "server" : _ -> run 9482 app
+    "capi-to-org" : filename : _ -> capiToOrg filename
+    _x -> putStrLn ("Unrecognised args: " <> show args)
+
+capiToOrg :: FilePath -> IO ()
+capiToOrg inputFilepath = do
+  capiResponse <- eitherDecodeFileStrict inputFilepath
+  case capiResponse of
+    Left s -> do
+      putStrLn "Failed to decode capi response, got error:"
+      putStrLn s
+    Right (Capi.EndpointWrapper r) -> do
+      pandocs <- Reader.responseToPandocs r >>= traverse toOrg
+      case pandocs of
+        [] -> putStrLn "Error: got no results"
+        preamble : rest -> do
+          Text.writeFile "preamble.org" preamble
+          for_ (zip [1..] rest)
+            \(i, result) -> Text.writeFile ("result-" <> show i <> ".org") result
+  where
+    toOrg :: Pandoc -> IO Text
+    toOrg pandoc = do
+      let writerOptions = def { writerWrapText = WrapNone }
+      let updateLinks = \case
+            l@(Link attrs alt (url, title)) -> case
+              Text.stripPrefix "https://www.theguardian.com/" url of
+                Just u -> Link attrs alt ("capi-org:" <> u, title)
+                Nothing ->
+                  if Text.isPrefixOf "profile/" url
+                  then Link attrs alt ("capi-org:" <> url, title)
+                  else l
+            x -> x
+      let updatedPandoc = walk updateLinks pandoc
+      runIOorExplode (writeOrg writerOptions updatedPandoc)
 
 app :: Application
 app = serve converterAPI server

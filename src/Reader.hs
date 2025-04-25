@@ -45,6 +45,29 @@ responseToPandoc = \case
      , Para [Str ("Got response of unsupported type: " <> T.pack (show x))]
      ])
 
+responseToPandocs :: Capi.Response -> IO [Pandoc]
+responseToPandocs = \case
+  Capi.Item Capi.ItemResponse{status, userTier, total, content, results, tag, section} -> let
+    meta = Meta (Map.fromList [ ("status", MetaString status)
+                              , ("userTier", MetaString userTier)
+                              , ("total", MetaString (T.pack (show total)))
+                              ])
+    in case content of
+      Just c -> (: []) <$> contentToPandoc c meta
+      Nothing -> do
+        let preamble = getFirst (foldMap First
+              [ fmap sectionPreamble section
+              , fmap tagPreamble tag
+              ] )
+        resultBlocks <- maybe (return []) (traverse (contentToBlocks 1)) results
+        return (Pandoc mempty (fromMaybe [] preamble)
+                : fmap (Pandoc mempty) resultBlocks)
+  x -> return
+    [Pandoc mempty
+     [ Header 1 nullAttr [Str "Unsupported CAPI response type"]
+     , Para [Str ("Got response of unsupported type: " <> T.pack (show x))]
+     ]]
+
 sectionPreamble :: Capi.Section -> [Block]
 sectionPreamble Capi.Section{..} =
   [ Header 1 nullAttr [Str ("Section: " <> webTitle)]
