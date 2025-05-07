@@ -39,6 +39,7 @@ import Servant.Client.Core (mkAuthenticatedRequest)
 import Data.Time.Clock.System (SystemTime(MkSystemTime))
 import Composer (elementToElementFragment)
 import Text.Read (readMaybe)
+import Data.Maybe (fromMaybe)
 
 main :: IO ()
 main = do
@@ -46,15 +47,23 @@ main = do
   case args of
     "server" : _ -> run 9482 app
     "capi-to-org" : filename : _ -> capiToOrg filename
-    "set-code-block" : orgFile : revision : _ -> setCodeBlock orgFile revision
+    "set-code-block" : orgFile : _ -> setCodeBlock orgFile
     _x -> putStrLn ("Unrecognised args: " <> show args)
 
-setCodeBlock :: FilePath -> String -> IO ()
-setCodeBlock orgFile revisionId = do
+setCodeBlock :: FilePath -> IO ()
+setCodeBlock orgFile = do
   orgContents <-  readFile orgFile
-  orgBlock <- runIOorExplode do
-    p <- readOrg def (Text.pack orgContents)
-    writeComposer def p
+  (orgBlock, rId, Just cId, Just bId) <- runIOorExplode do
+    p@(Pandoc (Meta meta) _blocks) <- readOrg def (Text.pack orgContents)
+    let asMetaText :: MetaValue -> Maybe Text
+        asMetaText (MetaString s) = Just s
+        asMetaText _ = Nothing
+    let revisionId :: Maybe Int
+        revisionId = Map.lookup "revision_id" meta >>= asMetaText >>= (readMaybe . Text.unpack)
+    let contentId = fmap Composer.ContentId (Map.lookup "content_id" meta >>= asMetaText)
+    let blockId = fmap Composer.BlockId (Map.lookup "main_block_id" meta >>= asMetaText)
+    b <- writeComposer def p
+    return (b, revisionId, contentId, blockId)
   let Composer.Elements blockElements = orgBlock.elements
   manager' <- newManager tlsManagerSettings
   pandaCookie <- getEnv "PANDA_COOKIE"
@@ -63,8 +72,10 @@ setCodeBlock orgFile revisionId = do
     postBlock =
       ComposerBackend.postBlock
         (mkAuthenticatedRequest (Text.pack pandaCookie) ComposerBackend.authenticate)
-        (Composer.ContentId "67f7d4468f081771a947ac7c")
-        (Composer.BlockId "67f7d4d28f081771a947ac7d")
+        -- (fromMaybe (Composer.ContentId "67f7d4468f081771a947ac7c") cId)
+        cId
+        -- (fromMaybe (Composer.BlockId "67f7d4d28f081771a947ac7d") bId)
+        bId
         (Composer.BlockFragment
           { lastModifiedBy = Composer.UserEntity
             { email = "emily.bourke+test@guardian.co.uk"
@@ -76,7 +87,7 @@ setCodeBlock orgFile revisionId = do
           , attributes = Nothing
           , contributors = []
           , tags = []
-          , revisionId = readMaybe revisionId
+          , revisionId = rId
           })
   res <- runClientM
     postBlock
