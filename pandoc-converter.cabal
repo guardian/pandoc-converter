@@ -16,6 +16,7 @@ executable PandocConverter
       Capi
       Composer
       Reader
+      ComposerBackend
     -- other-extensions:
     build-depends:
         aeson,
@@ -24,11 +25,16 @@ executable PandocConverter
         -- cmdargs,
         containers,
         generic-lens,
+        http-client,
+        http-client-tls,
+        http-types,
         lens,
         megaparsec,
         mtl,
         pandoc,
         pandoc-types,
+        servant-client,
+        servant-client-core,
         servant-server,
         text,
         time,

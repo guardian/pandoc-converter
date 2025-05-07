@@ -2,11 +2,19 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE BlockArguments #-}
+-- | Redefinition of some parts of the composer model defined in
+-- com.gu.flexiblecontent.model (in flexible-content-common)
 module Composer where
 
 import GHC.Generics (Generic)
 import Data.Aeson
 import Data.Text qualified as T
+import Data.Time.Clock.System (SystemTime)
+import Data.Map (Map)
+import Data.Text (Text)
+import Servant (ToHttpApiData (..))
+import Data.Maybe (fromMaybe)
 -- import Data.Time
 
 -- data ContentEntityRaw = ContentEntityRaw
@@ -65,29 +73,114 @@ import Data.Text qualified as T
 --     aliasPaths :: [()] -- [AliasPath]
 --   }
 
+newtype ContentId = ContentId Text
+  deriving (Show, Generic)
+
+instance ToJSON ContentId
+
+instance ToHttpApiData ContentId where
+  toUrlPiece (ContentId id) = id
+
 data Block = Block
-  { elements :: Elements
-    -- id :: String,
-                       -- lastModified :: UTCTime,
-                       -- dateCreated :: UTCTime,
-                       -- publishedDate :: Maybe UTCTime ,
-                       -- firstPublishedDate :: Maybe UTCTime ,
-                       -- createdBy :: Maybe UserEntity,
-                       -- lastModifiedBy :: Maybe UserEntity,
-                       -- contributors :: Seq TagEntity,
-                       -- tags :: Seq TagEntity,
-                       -- published :: Boolean,
-                       -- attributes :: Map String String,
-                       -- revisionId :: Maybe Int
-  } deriving (Show, Generic)
+  { elements :: Elements,
+    id :: BlockId,
+    lastModified :: SystemTime,
+    dateCreated :: SystemTime,
+    publishedDate :: Maybe SystemTime,
+    firstPublishedDate :: Maybe SystemTime,
+    createdBy :: Maybe UserEntity,
+    lastModifiedBy :: Maybe UserEntity,
+    contributors :: [TagEntity],
+    tags :: [TagEntity],
+    published :: Bool,
+    attributes :: Map Text Text,
+    revisionId :: Maybe Int
+  }
+  deriving (Show, Generic)
 
 instance ToJSON Block
+instance FromJSON Block
+
+newtype BlockId = BlockId Text
+  deriving (Show, Generic)
+
+instance ToJSON BlockId
+instance FromJSON BlockId
+
+instance ToHttpApiData BlockId where
+  toUrlPiece (BlockId id) = id
+
+-- While the Block type (known as BlockEntity) is accepted by live block
+-- endpoint, BlockFragment is what's accepted by the draft block endpoint.
+-- Annoyingly they're separate and slightly different?
+data BlockFragment = BlockFragment
+  { lastModifiedBy :: UserEntity,
+    lastModified :: Maybe SystemTime,
+    elements :: Maybe [ElementFragment],
+    attributes :: Maybe (Map Text Text),
+    contributors :: [TagEntity],
+    tags :: [TagEntity],
+    revisionId :: Maybe Int
+  } deriving (Show, Generic)
+
+instance ToJSON BlockFragment
+
+data UserEntity = UserEntity
+  {email  :: Text,
+    firstName :: Text,
+    lastName :: Text
+  } deriving (Show, Generic)
+
+instance ToJSON UserEntity
+instance FromJSON UserEntity
+
+data ElementFragment = ElementFragment
+  { elementType :: ElementType,
+    fields :: Maybe ElementFields,
+    assets :: Maybe [AssetFragment]
+  }
+  deriving (Show, Generic)
+
+instance ToJSON ElementFragment
+
+newtype ElementFields = ElementFields (Map Text Text)
+  deriving (Show, Generic)
+
+instance ToJSON ElementFields
+
+-- not using yet
+data TagEntity = TagEntity
+  -- { id :: Int64,
+  --   tagType :: String, -- called type
+  --   subType :: Maybe String,
+  --   internalName :: String,
+  --   externalName :: String,
+  --   slug :: Maybe String,
+  --   section :: SectionEntity,
+  --   path :: Maybe String,
+  --   adBlockingLevel :: Maybe BlockingLevel,
+  --   contributionBlockingLevel :: Maybe BlockingLevel
+  -- }
+  deriving (Show, Generic)
+instance ToJSON TagEntity
+instance FromJSON TagEntity
+data AssetFragment
+  deriving (Show, Generic)
+instance ToJSON AssetFragment
+data SectionEntity
+  deriving (Show, Generic)
+instance ToJSON SectionEntity
+data BlockingLevel
+  deriving (Show, Generic)
+instance ToJSON BlockingLevel
 
 newtype Elements = Elements [Element]
-  deriving Show
+  deriving (Show, Generic)
 
 instance ToJSON Elements where
   toJSON (Elements es) = toJSON es
+
+instance FromJSON Elements
 
 instance Semigroup Composer.Elements where
   (Composer.Elements e1) <> (Composer.Elements e2) = case (e1, e2) of
@@ -124,38 +217,140 @@ data Element
   | Recipe
   | List
   | Timeline
-  deriving Show
+  deriving (Show)
 
 instance ToJSON Element where
   toJSON e = object
-    ([ "elementType" .= elementType e
+    ([ "elementType" .= elementToElementType e
      ]
      <> (case e of Text t -> ["fields" .= object ["text" .= t]]; _nonText -> []))
+
+elementToElementType :: Element -> ElementType
+elementToElementType = \case
+  Text _ -> TextType
+  Image -> ImageType
+  Embed -> EmbedType
+  Form -> FormType
+  PullQuote -> PullQuoteType
+  Interactive -> InteractiveType
+  Comment -> CommentType
+  RichLink -> RichLinkType
+  Table -> TableType
+  Video -> VideoType
+  Tweet -> TweetType
+  Witness -> WitnessType
+  Code -> CodeType
+  Audio -> AudioType
+  Map -> MapType
+  Document -> DocumentType
+  Membership -> MembershipType
+  ContentAtom -> ContentAtomType
+  Instagram -> InstagramType
+  Vine -> VineType
+  Callout -> CalloutType
+  Cartoon -> CartoonType
+  Recipe -> RecipeType
+  List -> ListType
+  Timeline -> TimelineType
+
+data ElementType
+  = TextType
+  | ImageType
+  | EmbedType
+  | FormType
+  | PullQuoteType
+  | InteractiveType
+  | CommentType
+  | RichLinkType
+  | TableType
+  | VideoType
+  | TweetType
+  | WitnessType
+  | CodeType
+  | AudioType
+  | MapType
+  | DocumentType
+  | MembershipType
+  | ContentAtomType
+  | InstagramType
+  | VineType
+  | CalloutType
+  | CartoonType
+  | RecipeType
+  | ListType
+  | TimelineType
+  deriving (Show, Eq, Generic)
+
+typenames :: [(ElementType, Text)]
+typenames =
+  [ (TextType, "text"),
+    (ImageType, "image"),
+    (EmbedType, "embed"),
+    (FormType, "form"),
+    (PullQuoteType, "pullQuote"),
+    (InteractiveType, "interactive"),
+    (CommentType, "comment"),
+    (RichLinkType, "richLink"),
+    (TableType, "table"),
+    (VideoType, "video"),
+    (TweetType, "tweet"),
+    (WitnessType, "witness"),
+    (CodeType, "code"),
+    (AudioType, "audio"),
+    (MapType, "map"),
+    (DocumentType, "document"),
+    (MembershipType, "membership"),
+    (ContentAtomType, "contentAtom"),
+    (InstagramType, "instagram"),
+    (VineType, "vine"),
+    (CalloutType, "callout"),
+    (CartoonType, "cartoon"),
+    (RecipeType, "recipe"),
+    (ListType, "list"),
+    (TimelineType, "timeline")
+  ]
+
+elementTypes :: [(Text, ElementType)]
+elementTypes = fmap (\(a, b) -> (b, a)) typenames
+
+instance ToJSON ElementType where
+  toJSON elementType = toJSON typename
     where
-      elementType :: Element -> T.Text
-      elementType = \case
-        Text _ -> "text"
-        Image -> "image"
-        Embed -> "embed"
-        Form -> "form"
-        PullQuote -> "pullQuote"
-        Interactive -> "interactive"
-        Comment -> "comment"
-        RichLink -> "richLink"
-        Table -> "table"
-        Video -> "video"
-        Tweet -> "tweet"
-        Witness -> "witness"
-        Code -> "code"
-        Audio -> "audio"
-        Map -> "map"
-        Document -> "document"
-        Membership -> "membership"
-        ContentAtom -> "contentAtom"
-        Instagram -> "instagram"
-        Vine -> "vine"
-        Callout -> "callout"
-        Cartoon -> "cartoon"
-        Recipe -> "recipe"
-        List -> "list"
-        Timeline -> "timeline"
+      typename :: Text
+      typename = fromMaybe "unknown-element" (lookup elementType typenames)
+
+instance FromJSON ElementType where
+  parseJSON = withText "ElementType" \t -> maybe (fail "unknown element") return (lookup t elementTypes)
+
+instance FromJSON Element where
+  parseJSON = withObject "Element" \o -> do
+    elementType <- o .: "elementType"
+    case elementType of
+      TextType -> do
+        fields <- o .: "fields"
+        t <- fields .: "text"
+        return (Text t)
+      ImageType -> return Image
+      EmbedType -> return Embed
+      FormType -> return Form
+      PullQuoteType -> return PullQuote
+      InteractiveType -> return Interactive
+      CommentType -> return Comment
+      RichLinkType -> return RichLink
+      TableType -> return Table
+      VideoType -> return Video
+      TweetType -> return Tweet
+      WitnessType -> return Witness
+      CodeType -> return Code
+      AudioType -> return Audio
+      MapType -> return Map
+      DocumentType -> return Document
+      MembershipType -> return Membership
+      ContentAtomType -> return ContentAtom
+      InstagramType -> return Instagram
+      VineType -> return Vine
+      CalloutType -> return Callout
+      CartoonType -> return Cartoon
+      RecipeType -> return Recipe
+      ListType -> return List
+      TimelineType -> return Timeline

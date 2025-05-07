@@ -1,7 +1,8 @@
+{-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE BlockArguments #-}
 module Main where
 
 import Control.Category ((>>>))
@@ -25,8 +26,16 @@ import Text.Pandoc.Walk (walk)
 import Capi qualified
 import Composer qualified
 import Reader qualified
-import System.Environment (getArgs)
+import System.Environment (getArgs, getEnv)
 import Data.Foldable (for_)
+import Data.Time (UTCTime(..), fromGregorian)
+import qualified Data.Map as Map
+import Network.HTTP.Client (newManager)
+import Network.HTTP.Client.TLS (tlsManagerSettings)
+import Servant.Client
+import qualified ComposerBackend
+import Servant.Client.Core (mkAuthenticatedRequest)
+import Data.Time.Clock.System (SystemTime(MkSystemTime))
 
 main :: IO ()
 main = do
@@ -34,7 +43,47 @@ main = do
   case args of
     "server" : _ -> run 9482 app
     "capi-to-org" : filename : _ -> capiToOrg filename
+    "set-code-block" : _ -> setCodeBlock
     _x -> putStrLn ("Unrecognised args: " <> show args)
+
+setCodeBlock :: IO ()
+setCodeBlock = do
+  manager' <- newManager tlsManagerSettings
+  pandaCookie <- getEnv "PANDA_COOKIE"
+  let
+    postBlock :: ClientM ComposerBackend.WrappedBlock
+    postBlock =
+      ComposerBackend.postBlock
+        (mkAuthenticatedRequest (Text.pack pandaCookie) ComposerBackend.authenticate)
+        (Composer.ContentId "67f7d4468f081771a947ac7c")
+        (Composer.BlockId "67f7d4d28f081771a947ac7d")
+        (Composer.BlockFragment
+          { lastModifiedBy = Composer.UserEntity
+            { email = "emily.bourke+test@guardian.co.uk"
+            , firstName = "Emily (test)"
+            , lastName = "Bourke (test)"
+            }
+          , lastModified = Nothing
+          , elements = Just [Composer.ElementFragment
+                             { elementType = Composer.TextType,
+                               assets = Nothing,
+                               fields = Just (Composer.ElementFields (Map.singleton "text" "<p>why <i>hello</i> there!</p>"))
+                             }]
+          , attributes = Nothing
+          , contributors = []
+          , tags = []
+          , revisionId = Just 14
+          })
+  res <- runClientM
+    postBlock
+    (mkClientEnv manager' (BaseUrl Https "composer.code.dev-gutools.co.uk" 443 ""))
+  case res of
+    Left err -> do
+      putStrLn "Got error:"
+      print err
+    Right block -> do
+      putStrLn "Got block:"
+      print block
 
 capiToOrg :: FilePath -> IO ()
 capiToOrg inputFilepath = do
@@ -154,8 +203,25 @@ newtype WriterState = WriterState
 pandocToComposer :: PandocMonad m => Pandoc -> StateT WriterState m Composer.Block
 pandocToComposer (Pandoc _meta blocks) = blocksToComposer blocks
 
-blocksToComposer :: PandocMonad m => [Block] -> StateT WriterState m Composer.Block
-blocksToComposer = traverse blockToComposer >>> fmap (mconcat >>> Composer.Block)
+blocksToComposer :: (PandocMonad m) => [Block] -> StateT WriterState m Composer.Block
+blocksToComposer = traverse blockToComposer >>> fmap (mconcat >>> makeBlock)
+  where
+    makeBlock elements =
+      Composer.Block -- placeholder data: will probably want to change at some point!
+        { elements,
+          id = Composer.BlockId "",
+          Composer.lastModified = MkSystemTime 0 0,
+          dateCreated = MkSystemTime 0 0,
+          publishedDate = Nothing,
+          firstPublishedDate = Nothing,
+          createdBy = Nothing,
+          lastModifiedBy = Nothing,
+          contributors = [],
+          tags = [],
+          published = False,
+          attributes = Map.empty,
+          revisionId = Nothing
+        }
 
 blockToComposer :: PandocMonad m => Block -> StateT WriterState m Composer.Elements
 blockToComposer = \case
