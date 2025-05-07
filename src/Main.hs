@@ -294,7 +294,10 @@ inlineToComposer = \case
   LineBreak -> return mempty
   Math _ _ -> return mempty
   RawInline _ _ -> return mempty
-  Link _ _ _ -> return mempty
+  Link _attrs altText (url, title) ->
+    wrapComposerText
+      (\t -> "<a href=\"" <> url <> "\" alt=\"" <> title <> "\">" <> t <> "</a>")
+      (fmap mconcat (traverse inlineToComposer altText))
   Image _ _ _ -> return mempty
   Note _ -> return mempty
   Span _ _ -> return mempty
