@@ -2,6 +2,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
@@ -36,6 +37,8 @@ import Servant.Client
 import qualified ComposerBackend
 import Servant.Client.Core (mkAuthenticatedRequest)
 import Data.Time.Clock.System (SystemTime(MkSystemTime))
+import Composer (elementToElementFragment)
+import Text.Read (readMaybe)
 
 main :: IO ()
 main = do
@@ -43,11 +46,16 @@ main = do
   case args of
     "server" : _ -> run 9482 app
     "capi-to-org" : filename : _ -> capiToOrg filename
-    "set-code-block" : _ -> setCodeBlock
+    "set-code-block" : orgFile : revision : _ -> setCodeBlock orgFile revision
     _x -> putStrLn ("Unrecognised args: " <> show args)
 
-setCodeBlock :: IO ()
-setCodeBlock = do
+setCodeBlock :: FilePath -> String -> IO ()
+setCodeBlock orgFile revisionId = do
+  orgContents <-  readFile orgFile
+  orgBlock <- runIOorExplode do
+    p <- readOrg def (Text.pack orgContents)
+    writeComposer def p
+  let Composer.Elements blockElements = orgBlock.elements
   manager' <- newManager tlsManagerSettings
   pandaCookie <- getEnv "PANDA_COOKIE"
   let
@@ -64,15 +72,11 @@ setCodeBlock = do
             , lastName = "Bourke (test)"
             }
           , lastModified = Nothing
-          , elements = Just [Composer.ElementFragment
-                             { elementType = Composer.TextType,
-                               assets = Nothing,
-                               fields = Just (Composer.ElementFields (Map.singleton "text" "<p>why <i>hello</i> there!</p>"))
-                             }]
+          , elements = Just (fmap elementToElementFragment blockElements)
           , attributes = Nothing
           , contributors = []
           , tags = []
-          , revisionId = Just 14
+          , revisionId = readMaybe revisionId
           })
   res <- runClientM
     postBlock

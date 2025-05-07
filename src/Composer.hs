@@ -15,6 +15,7 @@ import Data.Map (Map)
 import Data.Text (Text)
 import Servant (ToHttpApiData (..))
 import Data.Maybe (fromMaybe)
+import qualified Data.Map.Strict as Map
 -- import Data.Time
 
 -- data ContentEntityRaw = ContentEntityRaw
@@ -224,6 +225,14 @@ instance ToJSON Element where
     ([ "elementType" .= elementToElementType e
      ]
      <> (case e of Text t -> ["fields" .= object ["text" .= t]]; _nonText -> []))
+
+elementToElementFragment :: Element -> ElementFragment
+elementToElementFragment e = let
+  elementType = elementToElementType e
+  fields = case e of
+    Text t -> Just (ElementFields (Map.singleton "text" t))
+    _ -> Nothing
+  in ElementFragment{assets = Nothing, ..}
 
 elementToElementType :: Element -> ElementType
 elementToElementType = \case
