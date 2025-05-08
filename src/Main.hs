@@ -47,10 +47,18 @@ main = do
     "server" : _ -> run 9482 app
     "capi-to-org" : filename : _ -> capiToOrg filename
     "set-code-block" : orgFile : _ -> setCodeBlock orgFile
-    "get-composer-article" : contentId : filename : _ -> getComposerArticle contentId filename
+    "get-composer-article" : contentId : filename : _ -> getComposerArticle (Composer.ContentId (Text.pack contentId)) filename
+    "refresh-composer-article" : filename : _ -> refreshComposerArticle filename
     _x -> putStrLn ("Unrecognised args: " <> show args)
 
-getComposerArticle :: String -> FilePath -> IO ()
+refreshComposerArticle :: String -> IO ()
+refreshComposerArticle filename = do
+  composerFile@ComposerFile{contentId} <- readComposerFile filename
+  case contentId of
+    Nothing -> putStrLn ("Failed to determine contentId from composer file: " <> show composerFile)
+    Just cId -> getComposerArticle cId filename
+
+getComposerArticle :: Composer.ContentId -> FilePath -> IO ()
 getComposerArticle contentId filename = do
   manager' <- newManager tlsManagerSettings
   pandaCookie <- getEnv "PANDA_COOKIE"
@@ -58,7 +66,7 @@ getComposerArticle contentId filename = do
   res <- runClientM
     (ComposerBackend.getContent
       (mkAuthenticatedRequest (Text.pack pandaCookie) ComposerBackend.authenticate)
-      (Composer.ContentId (Text.pack contentId))
+      contentId
       (Just True)
       (Just False))
     (mkClientEnv manager' (BaseUrl Https "composer.code.dev-gutools.co.uk" 443 ""))
@@ -90,11 +98,10 @@ getComposerArticle contentId filename = do
       let updatedPandoc = walk updateLinks pandoc
       runIOorExplode (writeOrg writerOptions updatedPandoc)
 
-
-setCodeBlock :: FilePath -> IO ()
-setCodeBlock orgFile = do
+readComposerFile :: FilePath -> IO ComposerFile
+readComposerFile orgFile = do
   orgContents <-  readFile orgFile
-  (orgBlock, rId, Just cId, Just bId) <- runIOorExplode do
+  runIOorExplode do
     p@(Pandoc (Meta meta) _blocks) <- readOrg def (Text.pack orgContents)
     let asMetaText :: MetaValue -> Maybe Text
         asMetaText (MetaString s) = Just s
@@ -102,9 +109,25 @@ setCodeBlock orgFile = do
     let revisionId :: Maybe Int
         revisionId = Map.lookup "revision_id" meta >>= asMetaText >>= (readMaybe . Text.unpack)
     let contentId = fmap Composer.ContentId (Map.lookup "content_id" meta >>= asMetaText)
-    let blockId = fmap Composer.BlockId (Map.lookup "main_block_id" meta >>= asMetaText)
-    b <- writeComposer def p
-    return (b, revisionId, contentId, blockId)
+    let firstBlockId = fmap Composer.BlockId (Map.lookup "main_block_id" meta >>= asMetaText)
+    block <- writeComposer def p
+    return ComposerFile{block, revisionId, contentId, firstBlockId}
+
+data ComposerFile = ComposerFile
+  { block :: Composer.Block
+  , revisionId :: Maybe Int
+  , contentId :: Maybe Composer.ContentId
+  , firstBlockId :: Maybe Composer.BlockId
+  } deriving (Show)
+
+setCodeBlock :: FilePath -> IO ()
+setCodeBlock orgFile = do
+  ComposerFile
+    { block = orgBlock
+    , revisionId = rId
+    , contentId = Just cId
+    , firstBlockId = Just bId
+    } <- readComposerFile orgFile
   let Composer.Elements blockElements = orgBlock.elements
   manager' <- newManager tlsManagerSettings
   pandaCookie <- getEnv "PANDA_COOKIE"
