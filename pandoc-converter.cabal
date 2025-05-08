@@ -17,6 +17,7 @@ executable PandocConverter
       Composer
       Reader
       ComposerBackend
+      Pandoc
     -- other-extensions:
     build-depends:
         aeson,

@@ -16,6 +16,8 @@ import Text.Pandoc.Readers (readHtml)
 import Data.Aeson.Types (Parser)
 import Data.Time (UTCTime)
 
+import Pandoc (parseHtml, HtmlAsText)
+
 data EndpointWrapper = EndpointWrapper
   { response :: Response
   }
@@ -72,14 +74,6 @@ data ContentFields = ContentFields
   deriving (Show, Generic)
 
 instance FromJSON ContentFields
-
-newtype HtmlAsText = HtmlAsText Text
-  deriving (Show, FromJSON)
-
-parseHtml :: HtmlAsText -> IO [Pandoc.Block]
-parseHtml (HtmlAsText t) = do
-  Pandoc _meta blocks <- runIOorExplode (readHtml def t)
-  return blocks
 
 data Section = Section
   { id :: Text

@@ -29,7 +29,6 @@ import Composer qualified
 import Reader qualified
 import System.Environment (getArgs, getEnv)
 import Data.Foldable (for_)
-import Data.Time (UTCTime(..), fromGregorian)
 import qualified Data.Map as Map
 import Network.HTTP.Client (newManager)
 import Network.HTTP.Client.TLS (tlsManagerSettings)
@@ -39,7 +38,7 @@ import Servant.Client.Core (mkAuthenticatedRequest)
 import Data.Time.Clock.System (SystemTime(MkSystemTime))
 import Composer (elementToElementFragment)
 import Text.Read (readMaybe)
-import Data.Maybe (fromMaybe)
+import Pandoc (composerToPandoc)
 
 main :: IO ()
 main = do
@@ -48,7 +47,49 @@ main = do
     "server" : _ -> run 9482 app
     "capi-to-org" : filename : _ -> capiToOrg filename
     "set-code-block" : orgFile : _ -> setCodeBlock orgFile
+    "get-composer-article" : contentId : filename : _ -> getComposerArticle contentId filename
     _x -> putStrLn ("Unrecognised args: " <> show args)
+
+getComposerArticle :: String -> FilePath -> IO ()
+getComposerArticle contentId filename = do
+  manager' <- newManager tlsManagerSettings
+  pandaCookie <- getEnv "PANDA_COOKIE"
+
+  res <- runClientM
+    (ComposerBackend.getContent
+      (mkAuthenticatedRequest (Text.pack pandaCookie) ComposerBackend.authenticate)
+      (Composer.ContentId (Text.pack contentId))
+      (Just True)
+      (Just False))
+    (mkClientEnv manager' (BaseUrl Https "composer.code.dev-gutools.co.uk" 443 ""))
+
+  case res of
+    Left err -> do
+      putStrLn "Got error:"
+      print err
+    Right content -> do
+      putStrLn "Got content:"
+      print content
+      pandoc <- composerToPandoc content
+      orgText <- toOrg pandoc
+      Text.writeFile filename orgText
+
+  where
+    toOrg :: Pandoc -> IO Text
+    toOrg pandoc = do
+      let writerOptions = def { writerWrapText = WrapNone }
+      let updateLinks = \case
+            l@(Link attrs alt (url, title)) -> case
+              Text.stripPrefix "https://www.theguardian.com/" url of
+                Just u -> Link attrs alt ("capi-org:" <> u, title)
+                Nothing ->
+                  if Text.isPrefixOf "profile/" url
+                  then Link attrs alt ("capi-org:" <> url, title)
+                  else l
+            x -> x
+      let updatedPandoc = walk updateLinks pandoc
+      runIOorExplode (writeOrg writerOptions updatedPandoc)
+
 
 setCodeBlock :: FilePath -> IO ()
 setCodeBlock orgFile = do

@@ -18,6 +18,7 @@ import Text.Pandoc.UTF8 qualified as UTF8
 import Text.Pandoc.Walk (walk)
 
 import Capi qualified
+import Pandoc qualified
 import qualified Data.Map.Strict as Map
 import Data.Maybe (fromMaybe, catMaybes)
 import Data.Monoid (First(..))
@@ -79,7 +80,7 @@ tagPreamble t@Capi.Tag {..} =
   case _type of
       Capi.Contributor -> catMaybes
         [ Just (Header 1 nullAttr [Str ("Contributor: " <> webTitle)])
-        , fmap (\(Capi.HtmlAsText b) -> Para [Str b]) bio
+        , fmap (\(Pandoc.HtmlAsText b) -> Para [Str b]) bio
         , Just (Para [Str ("Here is recent content by " <> webTitle)])
         ]
       _other ->
@@ -120,16 +121,16 @@ contentToBlocks baseHeaderLevel Capi.Content
         -- pandoc
         Header 1 attrs contents -> Header 2 attrs contents
         x -> x
-  standfirstBlocks <- maybe (pure []) Capi.parseHtml standfirst
-  bylineBlocks <- maybe (pure []) Capi.parseHtml bylineHtml
-  -- bodyBlocks <- maybe (pure []) Capi.parseHtml body
+  standfirstBlocks <- maybe (pure []) Pandoc.parseHtml standfirst
+  bylineBlocks <- maybe (pure []) Pandoc.parseHtml bylineHtml
+  -- bodyBlocks <- maybe (pure []) Pandoc.parseHtml body
   bodyBlocks <- case blocks of
         Nothing -> return [ Para [Str "No blocks found"] ]
         (Just Capi.Blocks{body = Nothing}) -> return [ Para [Str "No body blocks found"] ]
         (Just Capi.Blocks{body = Just body}) ->
           fmap concat (traverse capiBlockToBlock body) -- TODO: handle multiple blocks better?
 
-  mainBlocks <- maybe (pure []) Capi.parseHtml main
+  mainBlocks <- maybe (pure []) Pandoc.parseHtml main
   let tagBlocks =
         case tags of
           Nothing -> []
@@ -178,7 +179,7 @@ capiBlockToBlock Capi.Block{elements} =
 capiBlockElementToBlock :: Capi.BlockElement -> IO [Block]
 capiBlockElementToBlock = \case
   Capi.TextElement Capi.TextElementFields{html} ->
-    maybe (return [ Para [Str "(Empty text element)"] ]) Capi.parseHtml html
+    maybe (return [ Para [Str "(Empty text element)"] ]) Pandoc.parseHtml html
   Capi.ImageElement Capi.ImageElementFields{caption, alt, mediaApiUri} ->
     return [Figure
             mempty

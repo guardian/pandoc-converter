@@ -18,28 +18,126 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Map.Strict as Map
 -- import Data.Time
 
--- data ContentEntityRaw = ContentEntityRaw
---   { id :: String,
---     contentType :: String,
---     originatingSystem :: Maybe String,
---     published :: Bool,
---     isGone :: Maybe Bool,
---     isHosted :: Maybe Bool,
---     scheduledLaunchDate :: Maybe (), -- DateTime,
---     requestedScheduledLaunch :: Maybe (), -- DateTime,
---     expiry :: Maybe (), -- ExpiryEntityRaw,
---     rights :: Maybe (), -- RightsEntity,
---     contentChangeDetails :: (), -- ChangeDetailsEntityRaw,
---     identifiers :: Map String String,
---     collaborators :: [()], -- [UserEntity],
---     toolSettings :: Map String String,
---     aliasPaths :: [()], -- [AliasPath],
---     preview :: Maybe (), -- ContentFacetEntityRaw,
---     live :: Maybe (), -- ContentFacetEntityRaw,
---     auxiliaryAtoms :: [()], -- [AuxiliaryAtomEntity],
---     channels :: Maybe () -- ChannelsEntity.ChannelsData
---   }
+data ContentEntityRaw = ContentEntityRaw
+  { id :: Text,
+    contentType :: Text, -- called type
+    originatingSystem :: Maybe Text,
+    published :: Bool,
+    isGone :: Maybe Bool,
+    isHosted :: Maybe Bool,
+    scheduledLaunchDate :: Maybe SystemTime,
+    requestedScheduledLaunch :: Maybe SystemTime,
+    expiry :: Maybe ExpiryEntityRaw,
+    rights :: Maybe RightsEntity,
+    contentChangeDetails :: ChangeDetailsEntityRaw,
+    identifiers :: Map Text Text,
+    collaborators :: [UserEntity],
+    toolSettings :: Map Text Text,
+    aliasPaths :: [AliasPath],
+    preview :: Maybe ContentFacetEntityRaw,
+    live :: Maybe ContentFacetEntityRaw,
+    auxiliaryAtoms :: [AuxiliaryAtomEntity],
+    channels :: Maybe ChannelsData
+  } deriving (Show, Generic)
 
+instance FromJSON ContentEntityRaw where
+  parseJSON = withObject "ContentEntityRaw" \o -> do
+     id <- o .: "id"
+     contentType <- o .: "type"
+     originatingSystem <- o .:? "originatingSystem"
+     published <- o .: "published"
+     isGone <- o .:? "isGone"
+     isHosted <- o .:? "isHosted"
+     scheduledLaunchDate <- o .:? "scheduledLaunchDate"
+     requestedScheduledLaunch <- o .:? "requestedScheduledLaunch"
+     expiry <- o .:? "expiry"
+     rights <- o .:? "rights"
+     contentChangeDetails <- o .: "contentChangeDetails"
+     identifiers <- o .: "identifiers"
+     collaborators <- o .: "collaborators"
+     toolSettings <- o .: "toolSettings"
+     aliasPaths <- o .: "aliasPaths"
+     preview <- o .:? "preview"
+     live <- o .:? "live"
+     auxiliaryAtoms <- o .: "auxiliaryAtoms"
+     channels <- o .:? "channels"
+     return ContentEntityRaw{..}
+
+
+data ExpiryEntityRaw = ExpiryEntityRaw
+  deriving (Show, Generic)
+instance FromJSON ExpiryEntityRaw
+ where
+  parseJSON _value = return ExpiryEntityRaw
+data RightsEntity = RightsEntity
+  deriving (Show, Generic)
+instance FromJSON RightsEntity
+ where
+  parseJSON _value = return RightsEntity
+data ChangeDetailsEntityRaw = ChangeDetailsEntityRaw
+  deriving (Show, Generic)
+instance FromJSON ChangeDetailsEntityRaw
+ where
+  parseJSON _value = return ChangeDetailsEntityRaw
+data AliasPath = AliasPath
+  deriving (Show, Generic)
+instance FromJSON AliasPath
+ where
+  parseJSON _value = return AliasPath
+data ContentFacetEntityRaw = ContentFacetEntityRaw
+  { contentChangeDetails :: ChangeDetailsEntityRaw,
+    fields :: Map Text Text,
+    thumbnail :: Maybe ImageEntity,
+    mainBlock :: Maybe BlockEntity,
+    blocks :: [BlockEntity],
+    settings :: Map Text Text,
+    taxonomy :: Maybe TaxonomyEntityRaw,
+    aliasPaths :: [AliasPath]
+  }
+  deriving (Show, Generic)
+
+instance FromJSON ContentFacetEntityRaw
+
+data ImageEntity = ImageEntity
+  deriving (Show, Generic)
+instance FromJSON ImageEntity
+ where
+  parseJSON _value = return ImageEntity
+
+data BlockEntity = BlockEntity
+  { id :: Text,
+    lastModified :: SystemTime,
+    dateCreated :: SystemTime,
+    publishedDate :: Maybe SystemTime,
+    firstPublishedDate :: Maybe SystemTime,
+    createdBy :: Maybe UserEntity,
+    lastModifiedBy :: Maybe UserEntity,
+    contributors :: [TagEntity],
+    tags :: [TagEntity],
+    elements :: [Element],
+    published :: Bool,
+    attributes :: Map Text Text,
+    revisionId :: Maybe Int
+  }
+  deriving (Show, Generic)
+
+instance FromJSON BlockEntity
+
+data ChannelsData = ChannelsData
+  deriving (Show, Generic)
+instance FromJSON ChannelsData
+ where
+  parseJSON _value = return ChannelsData
+data TaxonomyEntityRaw = TaxonomyEntityRaw
+  deriving (Show, Generic)
+instance FromJSON TaxonomyEntityRaw
+ where
+  parseJSON _value = return TaxonomyEntityRaw
+data AuxiliaryAtomEntity = AuxiliaryAtomEntity
+  deriving (Show, Generic)
+instance FromJSON AuxiliaryAtomEntity
+ where
+  parseJSON _value = return AuxiliaryAtomEntity
 -- instance ToJSON ContentEntityRaw where
 --   toJSON (ContentEntityRaw {..}) = object
 --     [ "id" .= id
@@ -164,14 +262,15 @@ data TagEntity = TagEntity
   -- }
   deriving (Show, Generic)
 instance ToJSON TagEntity
-instance FromJSON TagEntity
-data AssetFragment
+instance FromJSON TagEntity where
+  parseJSON _value = return TagEntity
+data AssetFragment = AssetFragment
   deriving (Show, Generic)
 instance ToJSON AssetFragment
-data SectionEntity
+data SectionEntity = SectionEntity
   deriving (Show, Generic)
 instance ToJSON SectionEntity
-data BlockingLevel
+data BlockingLevel = BlockingLevel
   deriving (Show, Generic)
 instance ToJSON BlockingLevel
 
