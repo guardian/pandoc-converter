@@ -50,7 +50,7 @@ Once this has completed the binary is available in the nix store, and via a syml
 
 * Running the app
 
-The app has a few commands [[file:src/Main.hs::main :: IO ()][defined in the main method]], some of which are older or less useful. If you want to read from or write to composer, the useful ones are ~set-code-block~ ~get-composer-article~, and ~refresh-composer-article~.
+The app has a few commands [[file:src/Main.hs][defined in the main method]], some of which are older or less useful. If you want to read from or write to composer, the useful ones are ~set-code-block~ ~get-composer-article~, and ~refresh-composer-article~.
 
 A warning: this app is a hack day project and so is very incomplete! Expect elements that are not supported yet to be dropped on read from composer or on write to composer, for example.
 
@@ -118,8 +118,6 @@ Here’s a very basic emacs integration: a function which writes a buffer’s fi
             (pandoc-converter emdash-pandoc-converter)
             (output-buffer "*pandoc-converter-output*"))
       (progn
-        (message "Default directory is: %s" default-directory)
-        (message "Buffer filename is: %s" filename)
         (call-process
          pandoc-converter
          nil
