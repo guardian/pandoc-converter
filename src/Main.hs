@@ -327,7 +327,13 @@ blockToComposer = \case
     in list (fmap listItem blocks)
   OrderedList _ _ -> return mempty
   DefinitionList _ -> return mempty
-  Header _ _ _ -> return mempty
+  Header level _attrs contents -> let
+    hNumber = "h" <> Text.pack (show level)
+    hOpenTag = "<" <> hNumber <> ">"
+    hCloseTag = "</" <> hNumber <> ">"
+    in wrapComposerText
+      (\t -> hOpenTag <> t <> hCloseTag)
+      (fmap mconcat (traverse inlineToComposer contents))
   HorizontalRule -> return mempty
   Table _ _ _ _ _ _ -> return mempty
   Figure _ _ _ -> return mempty
