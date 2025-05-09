@@ -1,3 +1,153 @@
 #+title: A Pandoc Writer for Composer
 
 This is a 10% project: what if I can write a [[https://pandoc.org/MANUAL.html][pandoc]] writer for composer? We could then plausibly import other document types into composer, e.g. word documents, markdown files, or org-mode files.
+
+* Building
+
+I build this app using [[https://nixos.org/][Nix]], but it should also be possible to build it with [[https://www.haskell.org/cabal/][Cabal]] alone (without nix), if you’re more comfortable/familiar with Cabal. (There are no instructions here for building without nix, however.)
+
+** Building with Nix
+
+To build this app with Nix, it should be sufficient to:
+
+- install nix if you haven’t already
+- use [[https://github.com/NixOS/cabal2nix][cabal2nix]] to generate a nix equivalent to [[file:pandoc-converter.cabal]] (which specifies the app’s dependencies)
+- run ~nix-build release.nix~
+
+*** Installing Nix
+
+You can install the main nix distribution from https://nixos.org/download/, or use an alternative implementation like [[https://lix.systems/about/][Lix]].
+
+*** Using cabal2nix
+
+To use cabal2nix, I first run
+
+#+begin_src sh
+nix-shell -p cabal2nix
+#+end_src
+
+to enter a nix shell with cabal2nix available, and then
+
+#+begin_src sh
+cabal2nix . > pandoc-converter.nix
+#+end_src
+
+This creates the necssary file [[file:pandoc-converter.nix]] that is referenced from [[file:shell.nix]] and [[file:release.nix]].
+
+*** Building with nix-build
+
+To build the app with nix, I run:
+
+#+begin_src sh
+nix-build release.nix
+#+end_src
+
+Once this has completed the binary is available in the nix store, and via a symlink [[file:result/]] in the current directory. To run the binary I run (for example):
+
+#+begin_src sh
+./result/bin/PandocConverter set-code-block <path-to-org-file>
+#+end_src
+
+* Running the app
+
+The app has a few commands [[file:src/Main.hs::main :: IO ()][defined in the main method]], some of which are older or less useful. If you want to read from or write to composer, the useful ones are ~set-code-block~ ~get-composer-article~, and ~refresh-composer-article~.
+
+A warning: this app is a hack day project and so is very incomplete! Expect elements that are not supported yet to be dropped on read from composer or on write to composer, for example.
+
+It is also hardcoded to point to composer-CODE, which should keep things a bit safer: I would strongly advise against pointing it at composer-PROD.
+
+** Auth
+
+This app needs to be given a panda cookie in order to access composer. To do this, log in to [[https://composer.code.dev-gutools.co.uk/][composer-CODE]] and then copy the value of the ~gutoolsAuth-assym~ cookie that your browser has got from the auth flow, exporting it as an environment variable ~PANDA_COOKIE~:
+
+#+begin_src sh
+export PANDA_COOKIE="<copied-value-from-browser>"
+#+end_src
+
+** Reading an org file from composer
+
+To read from composer-CODE into an org file, run this command with your desired composer ID and destination file:
+
+#+begin_src sh
+./result/bin/PandocConverter get-composer-article <composer-id> <destination-file.org>
+#+end_src
+
+This will give you an org file with the contents of the composer article converted (somewhat incompletely!) into org-mode syntax, and will include some metadata in a properties block at the top of the file:
+
+#+begin_src org
+:PROPERTIES:
+:REVISION_ID: 7
+:CONTENT_ID: <composer-id>
+:MAIN_BLOCK_ID: <id-of-first-body-block>
+:END:
+#+end_src
+
+(This is used by the app for writing back to composer.)
+
+** Writing an org file to composer
+
+To write an org file to composer, make sure there is a properties block like the one written by ~get-composer-article~ at the top of the file. Then run:
+
+#+begin_src sh
+./result/bin/PandocConverter set-code-block <existing-file.org>
+#+end_src
+
+If the write hits a conflict (because the revision ID is too low), you can back up your work somewhere and then run ~refresh-composer-article~ to pick up the latest changes and revision ID.
+
+** Updating an org file from composer
+
+To avoid having to re-specify the composer ID when reading, there is a command ~refresh-composer-article~ which reads the composer ID out of the properties block at the start of the file.
+
+You can call it like this:
+
+#+begin_src sh
+./result/bin/PandocConverter refresh-composer-article <existing-file.org>
+#+end_src
+
+* Emacs editor integration
+
+Here’s a very basic emacs integration: a function which writes a buffer’s file to composer and then refreshes it.
+
+#+begin_src emacs-lisp
+(defvar emdash-pandoc-converter nil "Path to the pandoc-converter binary")
+
+(defun emdash-save-to-composer ()
+  "Save the current buffer to composer using the pandoc converter."
+  (interactive)
+  (if-let* ((filename (buffer-file-name))
+            (pandoc-converter emdash-pandoc-converter)
+            (output-buffer "*pandoc-converter-output*"))
+      (progn
+        (message "Default directory is: %s" default-directory)
+        (message "Buffer filename is: %s" filename)
+        (call-process
+         pandoc-converter
+         nil
+         output-buffer
+         nil
+         "set-code-block"
+         filename)
+        (call-process
+         pandoc-converter
+         nil
+         output-buffer
+         nil
+         "refresh-composer-article"
+         filename))
+    (message "Failed to call pandoc-converter for some reason. (Maybe emdash-pandoc-converter hasn’t been set?)")))
+#+end_src
+
+To make this more fluid, you could also set it to do that every time you save. This code does that, though it’s not very careful (it runs on every save of every buffer, which frequently won’t work).
+
+#+begin_src emacs-lisp
+(defun emdash-enable-saving-to-composer ()
+  "Enable writing to composer on save"
+  (interactive)
+  (add-hook 'after-save-hook 'emdash-save-to-composer))
+#+end_src
+
+When you want to stop running it on save you can remove the hook:
+
+#+begin_src emacs-lisp
+(remove-hook 'after-save-hook 'emdash-save-to-composer)
+#+end_src
